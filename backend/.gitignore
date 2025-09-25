@@ -32,6 +32,12 @@ build/
 ### VS Code ###
 .vscode/
 
+# Only ignore files with secrets
 src/main/resources/application.properties
 src/main/resources/application-local.properties
 .env
+
+# Keep these trackable for easy setup:
+# - src/main/resources/db/ (Flyway migrations)
+# - src/main/resources/static/ (if any)
+# - src/main/resources/templates/ (if any)
