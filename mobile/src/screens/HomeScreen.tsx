@@ -2,47 +2,92 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+/**
+ * HomeScreen Component - Main dashboard for the HomeGuard AI mobile app
+ * 
+ * This is the primary screen that users see when they open the app. It provides a comprehensive
+ * overview of the security system status, quick access to key features, and recent activity feed.
+ * The screen is designed to give users immediate visibility into their home security status
+ * and provide easy access to the most commonly used features.
+ * 
+ * Key Features:
+ * - System status overview with visual indicators
+ * - Quick action buttons for common tasks
+ * - Recent activity feed showing security events
+ * - Responsive design with consistent styling
+ * - Touch-friendly interface optimized for mobile
+ * 
+ * UI Components:
+ * - Header: App branding and title
+ * - Status Card: Current security system status with visual indicators
+ * - Quick Actions: Touchable buttons for common security tasks
+ * - Recent Activity: Timeline of recent security events and system activities
+ * 
+ * Data Integration (Future):
+ * - Real-time system status from backend API
+ * - Live activity feed with timestamps
+ * - User preferences and settings
+ * - Push notification integration
+ * 
+ * Navigation:
+ * - Quick action buttons will navigate to specific screens
+ * - Integration with React Navigation for seamless user experience
+ * - Deep linking support for specific security features
+ */
 export default function HomeScreen() {
   return (
     <ScrollView style={styles.container}>
+      {/* App header with branding and subtitle */}
       <View style={styles.header}>
         <Text style={styles.title}>HomeGuard AI</Text>
         <Text style={styles.subtitle}>Your Smart Security System</Text>
       </View>
 
+      {/* System status card showing current security state */}
       <View style={styles.statusCard}>
         <View style={styles.statusHeader}>
+          {/* Green checkmark icon indicating system is active and secure */}
           <Ionicons name="shield-checkmark" size={24} color="#4CAF50" />
           <Text style={styles.statusText}>System Active</Text>
         </View>
+        {/* Status description providing additional context */}
         <Text style={styles.statusSubtext}>All security systems are operational</Text>
       </View>
 
+      {/* Quick actions section for common security tasks */}
       <View style={styles.quickActions}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         
+        {/* Live camera feed access button */}
         <TouchableOpacity style={styles.actionButton}>
           <Ionicons name="camera" size={24} color="#007AFF" />
           <Text style={styles.actionText}>View Live Feed</Text>
         </TouchableOpacity>
 
+        {/* Recent alerts and notifications access button */}
         <TouchableOpacity style={styles.actionButton}>
           <Ionicons name="notifications" size={24} color="#FF9500" />
           <Text style={styles.actionText}>Recent Alerts</Text>
         </TouchableOpacity>
 
+        {/* System settings access button */}
         <TouchableOpacity style={styles.actionButton}>
           <Ionicons name="settings" size={24} color="#8E8E93" />
           <Text style={styles.actionText}>System Settings</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Recent activity feed showing security events and system activities */}
       <View style={styles.recentActivity}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
+        
+        {/* System check completion event */}
         <View style={styles.activityItem}>
           <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
           <Text style={styles.activityText}>System check completed - 2 minutes ago</Text>
         </View>
+        
+        {/* Motion detection event */}
         <View style={styles.activityItem}>
           <Ionicons name="eye" size={20} color="#007AFF" />
           <Text style={styles.activityText}>Motion detected in living room - 15 minutes ago</Text>

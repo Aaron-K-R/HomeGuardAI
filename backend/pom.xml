@@ -1,19 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  HomeGuard AI Backend API - Maven Project Configuration (pom.xml)
+  ============================================================================
+  
+  This Maven POM file configures the HomeGuard AI backend API project.
+  It defines dependencies, build settings, and project metadata for the
+  Spring Boot-based security system API.
+  
+  Project Overview:
+  - Spring Boot 3.5.6 application with Java 17
+  - RESTful API for mobile app integration
+  - PostgreSQL database with JPA/Hibernate ORM
+  - Spring Security for authentication and authorization
+  - Flyway for database migrations
+  - Lombok for reducing boilerplate code
+  
+  Key Dependencies:
+  - Spring Boot Starters: Web, Data JPA, Security, Validation, Actuator
+  - Database: PostgreSQL driver, Flyway migration tool
+  - Development: Lombok for code generation
+  - Testing: Spring Boot Test, Spring Security Test
+  
+  Build Configuration:
+  - Maven Compiler Plugin: Java 17 compilation with Lombok support
+  - Spring Boot Maven Plugin: Executable JAR creation
+  - Annotation Processing: Lombok integration for getters/setters
+  
+  Usage:
+  - Build: mvn clean install
+  - Run: mvn spring-boot:run
+  - Package: mvn package
+  - Test: mvn test
+  ============================================================================
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	
+	<!-- Maven model version -->
 	<modelVersion>4.0.0</modelVersion>
+	
+	<!-- Spring Boot parent POM for dependency management and plugin configuration -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.5.6</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
+	
+	<!-- Project identification -->
 	<groupId>com.homeguard</groupId>
 	<artifactId>homeguard-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>homeguard-api</name>
-	<description>Demo project for Spring Boot</description>
+	<description>HomeGuard AI Security System Backend API</description>
 	<url/>
+	
+	<!-- Project metadata -->
 	<licenses>
 		<license/>
 	</licenses>
@@ -26,54 +69,136 @@
 		<tag/>
 		<url/>
 	</scm>
+	
+	<!-- Project properties -->
 	<properties>
+		<!-- Java version: 17 is required for Spring Boot 3.x -->
 		<java.version>17</java.version>
 	</properties>
+	
+	<!-- Project dependencies -->
 	<dependencies>
+		<!--
+		  Spring Boot Actuator: Production-ready features for monitoring and management
+		  - Health checks, metrics, and application information endpoints
+		  - Essential for production monitoring and debugging
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		
+		<!--
+		  Spring Boot Data JPA: Java Persistence API integration
+		  - JPA/Hibernate ORM for database operations
+		  - Repository pattern for data access
+		  - Automatic query generation and transaction management
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+		
+		<!--
+		  Spring Boot Security: Authentication and authorization framework
+		  - User authentication and session management
+		  - Role-based access control (RBAC)
+		  - Security configuration and policy enforcement
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
+		
+		<!--
+		  Spring Boot Validation: Input validation and data integrity
+		  - Bean validation annotations (@Valid, @NotNull, @Size, etc.)
+		  - Automatic validation of request data
+		  - Error handling and validation messages
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+		
+		<!--
+		  Spring Boot Web: RESTful web services and MVC framework
+		  - REST API endpoints and controllers
+		  - JSON serialization/deserialization
+		  - HTTP request/response handling
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
+		
+		<!--
+		  Flyway Core: Database migration and version control
+		  - SQL migration scripts execution
+		  - Database schema versioning
+		  - Automatic migration on application startup
+		-->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-core</artifactId>
 		</dependency>
+		
+		<!--
+		  Flyway PostgreSQL: PostgreSQL-specific migration support
+		  - PostgreSQL-specific migration features
+		  - Database-specific SQL syntax support
+		  - Enhanced migration capabilities for PostgreSQL
+		-->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
+		<!--
+		  PostgreSQL Driver: Database connectivity
+		  - JDBC driver for PostgreSQL database
+		  - Runtime scope: only needed at runtime, not during compilation
+		  - Enables database connection and SQL operations
+		-->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		
+		<!--
+		  Lombok: Code generation library
+		  - Automatic getter/setter generation (@Getter, @Setter)
+		  - Constructor generation (@AllArgsConstructor, @NoArgsConstructor)
+		  - Optional scope: only needed during compilation
+		  - Reduces boilerplate code in entity classes
+		-->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
+		
+		<!--
+		  Spring Boot Test: Testing framework and utilities
+		  - Test context loading and configuration
+		  - MockMvc for web layer testing
+		  - Test scope: only needed during testing
+		  - Integration testing support
+		-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		
+		<!--
+		  Spring Security Test: Security testing utilities
+		  - Security context testing
+		  - Authentication and authorization testing
+		  - Test scope: only needed during testing
+		  - Mock security contexts for testing
+		-->
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
@@ -81,12 +206,20 @@
 		</dependency>
 	</dependencies>
 
+	<!-- Build configuration -->
 	<build>
 		<plugins>
+			<!--
+			  Maven Compiler Plugin: Java compilation configuration
+			  - Compiles Java source code to bytecode
+			  - Configures annotation processing for Lombok
+			  - Sets Java version and encoding
+			-->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
+					<!-- Annotation processor paths for Lombok integration -->
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.projectlombok</groupId>
@@ -95,10 +228,18 @@
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
+			
+			<!--
+			  Spring Boot Maven Plugin: Executable JAR creation
+			  - Creates executable JAR files
+			  - Packages all dependencies into a single JAR
+			  - Excludes development dependencies from final JAR
+			-->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<!-- Exclude Lombok from the final JAR (not needed at runtime) -->
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>
