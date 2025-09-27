@@ -1,57 +1,40 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
+import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
+import { ThemeProvider } from './src/contexts/ThemeContext';
+import { UserProvider } from './src/contexts/UserContext';
+import './global.css';
 
 // Import screens
-import HomeScreen from './src/screens/HomeScreen';
-import SecurityScreen from './src/screens/SecurityScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
+import LandingScreen from './src/screens/LandingScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import SignUpScreen from './src/screens/SignUpScreen';
+import MainAppScreen from './src/screens/MainAppScreen';
+import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
 
-const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName: keyof typeof Ionicons.glyphMap;
-
-            if (route.name === 'Home') {
-              iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'Security') {
-              iconName = focused ? 'shield' : 'shield-outline';
-            } else if (route.name === 'Settings') {
-              iconName = focused ? 'settings' : 'settings-outline';
-            } else {
-              iconName = 'help-outline';
-            }
-
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: '#007AFF',
-          tabBarInactiveTintColor: 'gray',
-        })}
-      >
-        <Tab.Screen 
-          name="Home" 
-          component={HomeScreen} 
-          options={{ title: 'HomeGuard AI' }}
-        />
-        <Tab.Screen 
-          name="Security" 
-          component={SecurityScreen}
-          options={{ title: 'Security Status' }}
-        />
-        <Tab.Screen 
-          name="Settings" 
-          component={SettingsScreen}
-          options={{ title: 'Settings' }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+    <UserProvider>
+      <ThemeProvider>
+        <NavigationContainer>
+          <StatusBar style="auto"/> 
+          <Stack.Navigator
+            initialRouteName="Landing"
+            screenOptions={{
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="Landing" component={LandingScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
+            <Stack.Screen name="MainApp" component={MainAppScreen} />
+            <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </ThemeProvider>
+    </UserProvider>
   );
 }

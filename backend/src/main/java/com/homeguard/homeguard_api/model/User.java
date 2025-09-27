@@ -69,12 +69,25 @@ public class User extends BaseEntity {
     @Column(name = "emergency_contact")
     private String emergencyContact;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
-    private SecuritySettings securitySettings;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
     private AppSettings appSettings;
 
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
     private java.util.List<Home> homes;
+
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<Device> devices;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<AccessPermission> accessPermissions;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<AccessLog> accessLogs;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private FaceProfile faceProfile;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<RFIDCard> rfidCards;
 }

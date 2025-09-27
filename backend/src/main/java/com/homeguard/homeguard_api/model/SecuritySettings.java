@@ -17,9 +17,9 @@ import lombok.Setter;
 public class SecuritySettings extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "home_id", nullable = false)
     @NotNull
-    private User user;
+    private Home home;
 
     @Column(name = "motion_detection_enabled", nullable = false)
     private Boolean motionDetectionEnabled = true;
