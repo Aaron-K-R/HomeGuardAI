@@ -89,4 +89,28 @@ public class Device extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
+
+    // New fields for Pi device capabilities
+    @Column(name = "device_capabilities", columnDefinition = "TEXT")
+    private String deviceCapabilities; // JSON array of capabilities
+
+    @Size(max = 50)
+    @Column(name = "pairing_code")
+    private String pairingCode;
+
+    @Column(name = "pairing_expires_at")
+    private java.time.LocalDateTime pairingExpiresAt;
+
+    @Size(max = 50)
+    @Column(name = "firmware_version")
+    private String firmwareVersion;
+
+    @Column(name = "device_configuration", columnDefinition = "TEXT")
+    private String deviceConfiguration; // JSON config
+
+    @Column(name = "last_heartbeat")
+    private java.time.LocalDateTime lastHeartbeat;
+
+    @Column(name = "is_online", nullable = false)
+    private Boolean isOnline = false;
 }

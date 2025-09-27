@@ -111,7 +111,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
         <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
           <View className="space-y-8">
             {/* First Name Field */}
-            <View>
+            <View className="mb-6">
               <Text className={`text-sm font-semibold mb-3 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                 First Name *
               </Text>
@@ -143,7 +143,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             </View>
 
             {/* Last Name Field */}
-            <View>
+            <View className="mb-6">
               <Text className={`text-sm font-semibold mb-3 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                 Last Name *
               </Text>
@@ -175,7 +175,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             </View>
 
             {/* Email Input */}
-            <View>
+            <View className="mb-6">
               <Text className={`text-sm font-medium mb-2 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                 Email Address *
               </Text>
@@ -209,7 +209,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             </View>
 
             {/* Phone Input */}
-            <View>
+            <View className="mb-6">
               <Text className={`text-sm font-medium mb-2 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                 Phone Number (Optional)
               </Text>
@@ -241,7 +241,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             </View>
 
             {/* Password Input */}
-            <View>
+            <View className="mb-6">
               <Text className={`text-sm font-medium mb-2 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                 Password *
               </Text>
@@ -280,7 +280,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             </View>
 
             {/* Confirm Password Input */}
-            <View>
+            <View className="mb-6">
               <Text className={`text-sm font-medium mb-2 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                 Confirm Password *
               </Text>

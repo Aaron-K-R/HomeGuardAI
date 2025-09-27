@@ -9,6 +9,7 @@ import com.homeguard.homeguard_api.exception.InvalidUserStateException;
 import com.homeguard.homeguard_api.exception.UserAlreadyExistsException;
 import com.homeguard.homeguard_api.exception.UserNotFoundException;
 import com.homeguard.homeguard_api.model.User;
+import com.homeguard.homeguard_api.model.AppSettings;
 import com.homeguard.homeguard_api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +57,14 @@ public class UserService {
         
         User savedUser = userRepository.save(user);
         log.info("User created successfully with id: {}", savedUser.getId());
+        
+        // Create default app settings for the new user
+        AppSettings defaultSettings = new AppSettings();
+        defaultSettings.setUser(savedUser);
+        // All other fields will use the default values defined in the AppSettings model
+        savedUser.setAppSettings(defaultSettings);
+        userRepository.save(savedUser);
+        log.info("Default app settings created for user id: {}", savedUser.getId());
         
         return convertToResponseDto(savedUser);
     }
@@ -261,7 +270,7 @@ public class UserService {
         
         // Set computed fields
         responseDto.setFullName(user.getFirstName() + " " + user.getLastName());
-        responseDto.setHasFaceProfile(user.getFaceProfile() != null);
+        responseDto.setHasFaceProfile(false); // Face profiles are now handled through Person entities
         responseDto.setDeviceCount(user.getDevices() != null ? user.getDevices().size() : 0);
         responseDto.setHomeCount(user.getHomes() != null ? user.getHomes().size() : 0);
         

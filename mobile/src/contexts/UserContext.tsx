@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import AuthService, { User, AuthResponse } from '../services/AuthService';
+import { appSettingsService } from '../services/AppSettingsService';
+import { useTheme } from './ThemeContext';
 
 interface UserContextType {
   user: User | null;
@@ -21,6 +23,7 @@ interface UserContextType {
   signOut: () => Promise<AuthResponse>;
   resetPassword: (email: string) => Promise<AuthResponse>;
   updateProfile: (updates: Partial<User>) => Promise<AuthResponse>;
+  fetchUserTheme: (userId: string) => Promise<string | null>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -33,6 +36,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const authService = AuthService.getInstance();
+  const { setThemeFromUserSettings } = useTheme();
 
   // Initialize authentication state
   useEffect(() => {
@@ -62,12 +66,32 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     };
   }, [authService]);
 
+  const fetchUserTheme = async (userId: string): Promise<string | null> => {
+    try {
+      const settings = await appSettingsService.getAppSettingsByUserId(userId);
+      return settings.theme;
+    } catch (error) {
+      console.error('Failed to fetch user theme:', error);
+      return null;
+    }
+  };
+
   const signIn = async (email: string, password: string): Promise<AuthResponse> => {
     setIsLoading(true);
     try {
       const response = await authService.signIn({ email, password });
       if (response.success && response.user) {
         setUser(response.user);
+        
+        // Fetch and apply user's theme preference
+        try {
+          const userTheme = await fetchUserTheme(response.user.id);
+          if (userTheme) {
+            setThemeFromUserSettings(userTheme);
+          }
+        } catch (error) {
+          console.error('Failed to apply user theme:', error);
+        }
       }
       return response;
     } catch (error) {
@@ -115,6 +139,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       const response = await authService.signOut();
+      
       if (response.success) {
         setUser(null);
       }
@@ -170,6 +195,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     signOut,
     resetPassword,
     updateProfile,
+    fetchUserTheme,
   };
 
   return (

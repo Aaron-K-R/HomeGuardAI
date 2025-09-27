@@ -16,7 +16,8 @@ const MainAppScreen: React.FC<MainAppScreenProps> = ({ navigation }) => {
   const handleLogout = async () => {
     const response = await signOut();
     if (response.success) {
-      navigation.navigate('Landing');
+      // Navigation will be handled automatically by AppNavigator
+      // when user state changes to null
     } else {
       Alert.alert('Logout Error', response.error || 'Failed to logout');
     }

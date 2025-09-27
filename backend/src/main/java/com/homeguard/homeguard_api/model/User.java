@@ -80,14 +80,15 @@ public class User extends BaseEntity {
     private java.util.List<Device> devices;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
-    private java.util.List<AccessPermission> accessPermissions;
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
     private java.util.List<AccessLog> accessLogs;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
-    private FaceProfile faceProfile;
+    // Note: User and Person are separate entities in our architecture
+    // A User is an app user, a Person is someone recognized by the system
+    // They can be linked through business logic but not through JPA relationships
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
-    private java.util.List<RFIDCard> rfidCards;
-}
+    private java.util.List<UserHome> userHomes;
+
+    @OneToMany(mappedBy = "invitedBy", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<HomeInvitation> sentInvitations;
+  }

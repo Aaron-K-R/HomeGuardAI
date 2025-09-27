@@ -14,14 +14,14 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "rfid_cards")
+@Table(name = "rfid_cards_persons")
 @Getter
 @Setter
 public class RFIDCard extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "person_id", nullable = false)
+    private Person person;
 
     @NotBlank
     @Size(max = 100)

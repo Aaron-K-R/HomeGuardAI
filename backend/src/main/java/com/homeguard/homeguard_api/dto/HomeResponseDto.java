@@ -3,7 +3,7 @@ package com.homeguard.homeguard_api.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -23,8 +23,8 @@ public class HomeResponseDto {
     private Boolean isActive;
     private String description;
     private String securitySystemType;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     
     // Owner information
     private String ownerId;

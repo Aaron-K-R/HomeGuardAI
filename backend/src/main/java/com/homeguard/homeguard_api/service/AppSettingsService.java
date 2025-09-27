@@ -74,7 +74,10 @@ public class AppSettingsService {
         log.info("Fetching app settings for user id: {}", userId);
         
         AppSettings settings = appSettingsRepository.findByUserId(userId)
-            .orElseThrow(() -> AppSettingsNotFoundException.withUserId(userId));
+            .orElseGet(() -> {
+                log.info("No app settings found for user id: {}, creating default settings", userId);
+                return createDefaultAppSettings(userId);
+            });
         
         return convertToResponseDto(settings);
     }
@@ -207,6 +210,24 @@ public class AppSettingsService {
         
         appSettingsRepository.delete(settings);
         log.info("App settings deleted successfully for user id: {}", userId);
+    }
+    
+    private AppSettings createDefaultAppSettings(String userId) {
+        log.info("Creating default app settings for user id: {}", userId);
+        
+        // Find user
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> UserNotFoundException.withId(userId));
+        
+        // Create new app settings with default values
+        AppSettings settings = new AppSettings();
+        settings.setUser(user);
+        // All other fields will use the default values defined in the AppSettings model
+        
+        AppSettings savedSettings = appSettingsRepository.save(settings);
+        log.info("Default app settings created successfully with id: {}", savedSettings.getId());
+        
+        return savedSettings;
     }
     
     private AppSettingsResponseDto convertToResponseDto(AppSettings settings) {

@@ -25,6 +25,10 @@ public class AccessLog extends BaseEntity {
     private User user; // null if unknown person
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "person_id")
+    private Person person; // null if unknown person
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "device_id", nullable = false)
     private Device device;
 

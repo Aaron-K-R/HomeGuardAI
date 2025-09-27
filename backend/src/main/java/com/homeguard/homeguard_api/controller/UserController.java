@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("${base.path}/users")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

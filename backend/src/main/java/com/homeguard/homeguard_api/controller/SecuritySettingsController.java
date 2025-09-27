@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/security-settings")
+@RequestMapping("${base.path}/security-settings")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

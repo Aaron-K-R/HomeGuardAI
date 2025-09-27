@@ -39,7 +39,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     
     if (response.success) {
       Alert.alert('Success', response.message || 'Login successful!', [
-        { text: 'OK', onPress: () => navigation.navigate('MainApp') }
+        { text: 'OK', onPress: () => {
+          // Navigation will be handled automatically by AppNavigator
+          // when user state changes
+        }}
       ]);
     } else {
       Alert.alert('Error', response.error || 'Login failed');
@@ -80,7 +83,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <View className="flex-1 px-6">
           <View className="space-y-8">
             {/* Email Input */}
-            <View>
+            <View className="mb-6">
               <Text className={`text-sm font-semibold mb-3 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                 Email Address
               </Text>
@@ -115,7 +118,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             </View>
 
             {/* Password Input */}
-            <View>
+            <View className="mb-6">
               <Text className={`text-sm font-semibold mb-3 ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
                 Password
               </Text>

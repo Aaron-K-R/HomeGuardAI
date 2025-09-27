@@ -79,4 +79,16 @@ public class Home extends BaseEntity {
     
     @OneToOne(mappedBy = "home", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
     private SecuritySettings securitySettings;
+
+    @OneToMany(mappedBy = "home", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<UserHome> userHomes;
+
+    @OneToMany(mappedBy = "home", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<HomePerson> homePersons;
+
+    @OneToMany(mappedBy = "home", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<HomeInvitation> invitations;
+
+    @OneToMany(mappedBy = "home", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<HomeActivity> activities;
 }

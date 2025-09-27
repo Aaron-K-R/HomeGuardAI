@@ -5,7 +5,7 @@ import com.homeguard.homeguard_api.enums.UserState;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -23,8 +23,8 @@ public class UserResponseDto {
     private String zipCode;
     private UserState userState;
     private String emergencyContact;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     
     // Additional computed fields
     private String fullName;

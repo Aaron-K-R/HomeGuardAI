@@ -3,7 +3,7 @@ package com.homeguard.homeguard_api.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -33,8 +33,8 @@ public class AppSettingsResponseDto {
     private Boolean dataUsageWifiOnly;
     private Boolean locationTrackingEnabled;
     
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     
     // Computed fields
     private boolean hasNotificationsEnabled;
