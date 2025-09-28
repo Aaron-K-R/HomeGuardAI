@@ -203,7 +203,7 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
   };
 
   const handleAddHome = () => {
-    navigation.navigate('HomeManagement');
+    navigation.navigate('HomeList');
   };
 
   const handleHomeSettings = (home: Home) => {
@@ -268,7 +268,7 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'door_request': return 'door-open';
+      case 'door_request': return 'key';
       case 'face_detection': return 'person';
       case 'rfid_scan': return 'card';
       case 'system_alert': return 'warning';
@@ -401,7 +401,7 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
           </View>
           <View className="flex-row">
             <TouchableOpacity 
-              onPress={() => navigation.navigate('HomeManagement')}
+              onPress={() => navigation.navigate('HomeList')}
               className="mr-4"
             >
               <Ionicons 

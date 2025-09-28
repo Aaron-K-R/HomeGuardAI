@@ -7,7 +7,10 @@ import HomeSelectionScreen from '../screens/HomeSelectionScreen';
 import HomeDashboardScreen from '../screens/HomeDashboardScreen';
 import SecuritySettingsScreen from '../screens/SecuritySettingsScreen';
 import AppSettingsScreen from '../screens/AppSettingsScreen';
-import HomeManagementScreen from '../screens/HomeManagementScreen';
+import HomeListScreen from '../screens/HomeListScreen';
+import MemberManagementScreen from '../screens/MemberManagementScreen';
+import ManagePeopleScreen from '../screens/ManagePeopleScreen';
+import RecentActivitiesScreen from '../screens/RecentActivitiesScreen';
 import DeviceManagementScreen from '../screens/DeviceManagementScreen';
 import DeadboltControlScreen from '../screens/DeadboltControlScreen';
 import FaceDetectionScreen from '../screens/FaceDetectionScreen';
@@ -71,8 +74,29 @@ const MainNavigator: React.FC = () => {
         }}
       />
       <Stack.Screen 
-        name="HomeManagement" 
-        component={HomeManagementScreen}
+        name="HomeList" 
+        component={HomeListScreen}
+        options={{
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen 
+        name="MemberManagement" 
+        component={MemberManagementScreen}
+        options={{
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen 
+        name="ManagePeople" 
+        component={ManagePeopleScreen}
+        options={{
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen 
+        name="RecentActivities" 
+        component={RecentActivitiesScreen}
         options={{
           gestureEnabled: true,
         }}

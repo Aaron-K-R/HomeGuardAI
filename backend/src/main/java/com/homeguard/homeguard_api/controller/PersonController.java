@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -45,5 +46,19 @@ public class PersonController {
     public ResponseEntity<Void> deletePerson(@PathVariable String id) {
         personService.deletePerson(id);
         return ResponseEntity.noContent().build();
+    }
+    
+    @PostMapping("/{id}/upload-image")
+    public ResponseEntity<PersonResponseDto> uploadPersonImage(
+            @PathVariable String id,
+            @RequestParam("image") MultipartFile image) {
+        PersonResponseDto response = personService.uploadPersonImage(id, image);
+        return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/home/{homeId}")
+    public ResponseEntity<List<PersonResponseDto>> getPersonsByHomeId(@PathVariable String homeId) {
+        List<PersonResponseDto> response = personService.getPersonsByHomeId(homeId);
+        return ResponseEntity.ok(response);
     }
 }

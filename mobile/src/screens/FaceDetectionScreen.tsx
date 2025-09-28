@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
+import { personService } from '../services/PersonService';
+import { PersonResponse } from '../services/PersonService';
 
 interface FaceProfile {
   id: string;
@@ -40,43 +42,46 @@ interface FaceDetectionScreenProps {
 const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, route }) => {
   const { isDark } = useTheme();
   const { user } = useUser();
+  
+  // Early safety check - prevent any code execution if route params are not ready
+  if (!route || !route.params) {
+    return (
+      <SafeAreaView className={`flex-1 ${isDark ? 'bg-neutral-900' : 'bg-neutral-50'}`}>
+        <View className="flex-1 justify-center items-center px-6">
+          <Text className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+            Loading...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
   const { home } = route.params;
   
-  const [faceProfiles, setFaceProfiles] = useState<FaceProfile[]>([
-    {
-      id: '1',
-      name: 'John Doe',
-      image: 'https://via.placeholder.com/100x100/3b82f6/ffffff?text=JD',
-      confidence: 95,
-      isActive: true,
-      lastSeen: '2 minutes ago',
-      accessCount: 127,
-      enrollmentMethod: 'manual',
-      faceFeatures: 'Encoded face features data...'
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      image: 'https://via.placeholder.com/100x100/10b981/ffffff?text=JS',
-      confidence: 88,
-      isActive: true,
-      lastSeen: '1 hour ago',
-      accessCount: 89,
-      enrollmentMethod: 'automatic',
-      faceFeatures: 'Encoded face features data...'
-    },
-    {
-      id: '3',
-      name: 'Unknown Person',
-      image: 'https://via.placeholder.com/100x100/ef4444/ffffff?text=?',
-      confidence: 45,
-      isActive: false,
-      lastSeen: '3 days ago',
-      accessCount: 1,
-      enrollmentMethod: 'automatic',
-      faceFeatures: 'Encoded face features data...'
-    }
-  ]);
+  // Safety check for home object
+  if (!home || !home.id) {
+    return (
+      <SafeAreaView className={`flex-1 ${isDark ? 'bg-neutral-900' : 'bg-neutral-50'}`}>
+        <View className="flex-1 justify-center items-center px-6">
+          <Text className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+            Home Not Found
+          </Text>
+          <Text className={`text-sm text-center ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+            Please select a home first
+          </Text>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="mt-4 px-6 py-3 bg-primary-600 rounded-xl"
+          >
+            <Text className="text-white font-semibold">Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
+  const [persons, setPersons] = useState<PersonResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
@@ -84,53 +89,89 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
   const [aiDetectionEnabled, setAiDetectionEnabled] = useState(true);
   const [confidenceThreshold, setConfidenceThreshold] = useState(80);
 
-  const handleToggleProfile = (profileId: string) => {
-    setFaceProfiles(prev => prev.map(profile => 
-      profile.id === profileId 
-        ? { ...profile, isActive: !profile.isActive }
-        : profile
-    ));
+  // Load persons on mount
+  useEffect(() => {
+    loadPersons();
+  }, []);
+
+  const loadPersons = async () => {
+    try {
+      setIsLoading(true);
+      const personsData = await personService.getAllActivePersons();
+      setPersons(personsData);
+    } catch (error) {
+      console.error('Error loading persons:', error);
+      Alert.alert('Error', 'Failed to load persons');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteProfile = (profileId: string) => {
+  const handleToggleProfile = async (personId: string) => {
+    try {
+      const person = persons.find(p => p.id === personId);
+      if (!person) return;
+
+      await personService.updatePerson(personId, {
+        name: person.name,
+        phone: person.phone,
+        email: person.email,
+        personType: person.personType,
+        notes: person.notes,
+        isActive: !person.isActive
+      });
+      
+      loadPersons(); // Refresh the list
+    } catch (error) {
+      console.error('Error toggling person:', error);
+      Alert.alert('Error', 'Failed to update person status');
+    }
+  };
+
+  const handleDeleteProfile = (personId: string) => {
     Alert.alert(
-      'Delete Face Profile',
-      'Are you sure you want to delete this face profile?',
+      'Delete Person',
+      'Are you sure you want to delete this person? This will also remove their face profile and all photos.',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: () => {
-            setFaceProfiles(prev => prev.filter(profile => profile.id !== profileId));
+          onPress: async () => {
+            try {
+              await personService.deletePerson(personId);
+              loadPersons(); // Refresh the list
+            } catch (error) {
+              console.error('Error deleting person:', error);
+              Alert.alert('Error', 'Failed to delete person');
+            }
           }
         }
       ]
     );
   };
 
-  const handleAddProfile = () => {
+  const handleAddProfile = async () => {
     if (!newProfileName.trim()) {
       Alert.alert('Error', 'Please enter a name');
       return;
     }
 
-    const newProfile: FaceProfile = {
-      id: Date.now().toString(),
-      name: newProfileName.trim(),
-      image: 'https://via.placeholder.com/100x100/6b7280/ffffff?text=?',
-      confidence: 0,
-      isActive: true,
-      lastSeen: 'Never',
-      accessCount: 0,
-      enrollmentMethod: 'manual',
-      faceFeatures: ''
-    };
-
-    setFaceProfiles([...faceProfiles, newProfile]);
-    setNewProfileName('');
-    setShowAddModal(false);
-    setShowEnrollmentModal(true);
+    try {
+      await personService.createPerson({
+        name: newProfileName.trim(),
+        personType: 'FAMILY_MEMBER',
+        isActive: true
+      });
+      
+      setNewProfileName('');
+      setShowAddModal(false);
+      setShowEnrollmentModal(true);
+      loadPersons(); // Refresh the list
+    } catch (error) {
+      console.error('Error creating person:', error);
+      Alert.alert('Error', 'Failed to create person');
+    }
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -139,7 +180,7 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
     return isDark ? '#ef4444' : '#dc2626';
   };
 
-  const FaceProfileCard = ({ profile }: { profile: FaceProfile }) => (
+  const FaceProfileCard = ({ person }: { person: PersonResponse }) => (
     <View className={`p-6 rounded-2xl mb-4 border ${
       isDark 
         ? 'bg-neutral-800 border-neutral-700' 
@@ -147,73 +188,90 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
     }`}>
       <View className="flex-row items-start mb-4">
         <View className="w-16 h-16 rounded-full overflow-hidden mr-4">
-          <Image 
-            source={{ uri: profile.image }}
-            className="w-full h-full"
-            resizeMode="cover"
-          />
+          {person.profileImagePath ? (
+            <Image 
+              source={{ uri: person.profileImagePath }}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className={`w-full h-full items-center justify-center ${
+              isDark ? 'bg-neutral-700' : 'bg-neutral-200'
+            }`}>
+              <Ionicons 
+                name="person" 
+                size={24} 
+                color={isDark ? '#a3a3a3' : '#737373'} 
+              />
+            </View>
+          )}
         </View>
         <View className="flex-1">
           <View className="flex-row justify-between items-start">
             <View className="flex-1">
               <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-                {profile.name}
+                {person.name}
               </Text>
               <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                {profile.enrollmentMethod === 'manual' ? 'Manual Enrollment' : 'Auto-Detected'}
+                {person.personType.replace('_', ' ')} • {person.faceVector ? 'Face Profile ✓' : 'No Face Profile'}
               </Text>
             </View>
             <View className={`px-3 py-1 rounded-full ${
-              profile.isActive 
+              person.isActive 
                 ? (isDark ? 'bg-green-600' : 'bg-green-500')
                 : (isDark ? 'bg-neutral-600' : 'bg-neutral-300')
             }`}>
               <Text className={`text-xs font-medium ${
-                profile.isActive ? 'text-white' : (isDark ? 'text-neutral-300' : 'text-neutral-600')
+                person.isActive ? 'text-white' : (isDark ? 'text-neutral-300' : 'text-neutral-600')
               }`}>
-                {profile.isActive ? 'Active' : 'Inactive'}
+                {person.isActive ? 'Active' : 'Inactive'}
               </Text>
             </View>
           </View>
         </View>
       </View>
       
-      {/* Confidence and Stats */}
+      {/* Face Profile Status */}
       <View className="flex-row justify-between items-center mb-4">
         <View className="flex-row items-center">
           <Ionicons 
-            name="eye" 
+            name={person.faceVector ? "checkmark-circle" : "close-circle"} 
             size={16} 
-            color={getConfidenceColor(profile.confidence)} 
+            color={person.faceVector ? (isDark ? '#10b981' : '#059669') : (isDark ? '#ef4444' : '#dc2626')} 
           />
           <Text className={`text-sm ml-2 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-            {profile.confidence}% confidence
+            {person.faceVector ? 'Face profile ready' : 'No face profile'}
           </Text>
         </View>
-        <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-          {profile.accessCount} accesses
-        </Text>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('HomeManagement', { home })}
+          className="px-3 py-1 rounded-full bg-primary-500"
+        >
+          <Text className="text-white text-xs font-medium">
+            Manage
+          </Text>
+        </TouchableOpacity>
       </View>
       
       {/* Last Seen */}
       <View className="flex-row justify-between items-center mb-4">
         <Text className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-          Last seen: {profile.lastSeen}
+          {person.lastSeen ? `Last seen: ${person.lastSeen}` : 'Never seen'}
         </Text>
         <View className="flex-row">
           <TouchableOpacity 
             className="p-2 mr-2"
-            onPress={() => handleToggleProfile(profile.id)}
+            onPress={() => handleToggleProfile(person.id)}
           >
             <Ionicons 
-              name={profile.isActive ? "eye" : "eye-off"} 
+              name={person.isActive ? "eye" : "eye-off"} 
               size={16} 
               color={isDark ? '#a3a3a3' : '#737373'} 
             />
           </TouchableOpacity>
           <TouchableOpacity 
             className="p-2"
-            onPress={() => handleDeleteProfile(profile.id)}
+            onPress={() => handleDeleteProfile(person.id)}
           >
             <Ionicons 
               name="trash-outline" 
@@ -362,12 +420,20 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
             </Text>
           </View>
         </View>
-        <TouchableOpacity
-          onPress={() => setShowAddModal(true)}
-          className={`p-2 rounded-full ${isDark ? 'bg-primary-600' : 'bg-primary-500'}`}
-        >
-          <Ionicons name="add" size={20} color="white" />
-        </TouchableOpacity>
+        <View className="flex-row space-x-2">
+          <TouchableOpacity
+            onPress={loadPersons}
+            className={`p-2 rounded-full ${isDark ? 'bg-neutral-700' : 'bg-neutral-200'}`}
+          >
+            <Ionicons name="refresh" size={20} color={isDark ? '#ffffff' : '#000000'} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('HomeManagement', { home })}
+            className={`p-2 rounded-full ${isDark ? 'bg-primary-600' : 'bg-primary-500'}`}
+          >
+            <Ionicons name="people" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
@@ -413,31 +479,52 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
             isDark ? 'bg-neutral-800' : 'bg-white'
           }`}>
             <Text className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-              {faceProfiles.length}
+              {persons.length}
             </Text>
             <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-              Face Profiles
+              Total Persons
             </Text>
           </View>
           <View className={`flex-1 p-4 rounded-xl ml-2 ${
             isDark ? 'bg-neutral-800' : 'bg-white'
           }`}>
             <Text className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-              {faceProfiles.filter(p => p.isActive).length}
+              {persons.filter(p => p.faceVector).length}
             </Text>
             <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-              Active
+              With Face Profiles
             </Text>
           </View>
         </View>
 
         {/* Face Profiles */}
         <View className="mb-6">
-          <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-            Face Profiles
-          </Text>
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+              Face Profiles
+            </Text>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('HomeManagement', { home })}
+              className="px-3 py-1 rounded-full bg-primary-500"
+            >
+              <Text className="text-white text-sm font-medium">
+                Manage All
+              </Text>
+            </TouchableOpacity>
+          </View>
           
-          {faceProfiles.length === 0 ? (
+          {isLoading ? (
+            <View className={`p-8 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} items-center`}>
+              <Ionicons 
+                name="refresh" 
+                size={48} 
+                color={isDark ? '#a3a3a3' : '#737373'} 
+              />
+              <Text className={`text-lg font-medium mt-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                Loading persons...
+              </Text>
+            </View>
+          ) : persons.length === 0 ? (
             <View className={`p-8 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} items-center`}>
               <Ionicons 
                 name="person-outline" 
@@ -445,15 +532,23 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
                 color={isDark ? '#a3a3a3' : '#737373'} 
               />
               <Text className={`text-lg font-medium mt-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-                No face profiles yet
+                No persons yet
               </Text>
               <Text className={`text-sm text-center mt-2 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                Add face profiles for automatic recognition
+                Add persons in Home Management to set up face recognition
               </Text>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('HomeManagement', { home })}
+                className="mt-4 px-4 py-2 rounded-lg bg-primary-500"
+              >
+                <Text className="text-white font-medium">
+                  Go to Home Management
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : (
-            faceProfiles.map((profile) => (
-              <FaceProfileCard key={profile.id} profile={profile} />
+            persons.map((person) => (
+              <FaceProfileCard key={person.id} person={person} />
             ))
           )}
         </View>

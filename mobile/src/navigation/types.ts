@@ -18,7 +18,10 @@ export type MainStackParamList = {
   Profile: undefined;
   Settings: undefined;
   // Home Management
-  HomeManagement: undefined;
+  HomeList: undefined; // List of homes
+  MemberManagement: { home: any }; // Manage specific home members (invite users, add people)
+  ManagePeople: { home: any }; // Manage people for a specific home
+  RecentActivities: { home: any }; // Recent activities for a specific home
   // Device Management
   DeviceManagement: { home: any };
   // Security Controls

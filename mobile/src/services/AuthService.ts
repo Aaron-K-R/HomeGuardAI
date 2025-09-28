@@ -170,7 +170,6 @@ class AuthService {
   // Sign in with Supabase and fetch user from Spring Boot
   public async signIn(data: LoginData): Promise<AuthResponse> {
     try {
-      
       // Step 1: Authenticate with Supabase
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
@@ -191,16 +190,13 @@ class AuthService {
         };
       }
 
-
       // Step 2: Fetch user profile from Spring Boot backend
-      
       const springResponse = await fetch(`${SPRING_API_BASE_URL}${API_CONFIG.ENDPOINTS.USERS}/${authData.user.id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
-
 
       if (!springResponse.ok) {
         const errorText = await springResponse.text();

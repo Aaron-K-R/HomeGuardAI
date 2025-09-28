@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,13 +6,15 @@ import {
   ScrollView, 
   StatusBar, 
   Alert,
-  Dimensions 
+  Dimensions,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { Home, Device, AccessEvent } from '../types/Home';
+import { homeActivityService, HomeActivity, ActivityCounts } from '../services/HomeActivityService';
 
 interface HomeDashboardScreenProps {
   navigation: any;
@@ -28,10 +30,51 @@ const { width } = Dimensions.get('window');
 const HomeDashboardScreen: React.FC<HomeDashboardScreenProps> = ({ navigation, route }) => {
   const { isDark } = useTheme();
   const { user } = useUser();
+  
+  // Early safety check - prevent any code execution if route params are not ready
+  if (!route || !route.params) {
+    return (
+      <SafeAreaView className={`flex-1 ${isDark ? 'bg-neutral-900' : 'bg-neutral-50'}`}>
+        <View className="flex-1 justify-center items-center px-6">
+          <Text className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+            Loading...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
   const { home } = route.params;
+  
+  // Safety check for home object
+  if (!home || !home.id) {
+    return (
+      <SafeAreaView className={`flex-1 ${isDark ? 'bg-neutral-900' : 'bg-neutral-50'}`}>
+        <View className="flex-1 justify-center items-center px-6">
+          <Text className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+            Home Not Found
+          </Text>
+          <Text className={`text-sm text-center ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+            Please select a home first
+          </Text>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="mt-4 px-6 py-3 bg-primary-600 rounded-xl"
+          >
+            <Text className="text-white font-semibold">Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
   
   const [isArmed, setIsArmed] = useState(home.isArmed);
   const [cameraStatus, setCameraStatus] = useState('online');
+  
+  // Activity states
+  const [recentActivities, setRecentActivities] = useState<HomeActivity[]>([]);
+  const [activityCounts, setActivityCounts] = useState<ActivityCounts>({ unacknowledged: 0, unresolved: 0 });
+  const [loadingActivities, setLoadingActivities] = useState(false);
 
   // Mock devices for this home
   const [devices] = useState<Device[]>([
@@ -94,6 +137,28 @@ const HomeDashboardScreen: React.FC<HomeDashboardScreenProps> = ({ navigation, r
     }
   ]);
 
+  // Load activities on mount
+  useEffect(() => {
+    loadActivities();
+  }, [home.id]);
+
+  const loadActivities = async () => {
+    try {
+      setLoadingActivities(true);
+      const [activities, counts] = await Promise.all([
+        homeActivityService.getRecentActivities(home.id, 24),
+        homeActivityService.getActivityCounts(home.id)
+      ]);
+      setRecentActivities(activities);
+      setActivityCounts(counts);
+    } catch (err) {
+      // Don't show error for activities, just log it
+      console.error('Error loading activities:', err);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
   const handleLogout = async () => {
     const response = await useUser().signOut();
     if (response.success) {
@@ -118,7 +183,11 @@ const HomeDashboardScreen: React.FC<HomeDashboardScreenProps> = ({ navigation, r
   };
 
   const handleDeviceManagement = () => {
-    Alert.alert('Device Management', 'Device management coming soon!');
+    navigation.navigate('DeviceManagement', { home });
+  };
+
+  const handleMemberManagement = () => {
+    navigation.navigate('MemberManagement', { home });
   };
 
   const handleAccessLog = () => {
@@ -235,13 +304,7 @@ const HomeDashboardScreen: React.FC<HomeDashboardScreenProps> = ({ navigation, r
             {home.address}
           </Text>
         </View>
-        <TouchableOpacity onPress={handleLogout}>
-          <Ionicons 
-            name="log-out-outline" 
-            size={24} 
-            color={isDark ? '#ef4444' : '#ef4444'} 
-          />
-        </TouchableOpacity>
+        
       </View>
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
@@ -338,7 +401,7 @@ const HomeDashboardScreen: React.FC<HomeDashboardScreenProps> = ({ navigation, r
             />
           </View>
           
-          <View className="flex-row">
+          <View className="flex-row mb-4">
             <QuickActionButton
               title="RFID Cards"
               icon="card"
@@ -350,6 +413,21 @@ const HomeDashboardScreen: React.FC<HomeDashboardScreenProps> = ({ navigation, r
               icon="document-text"
               color="bg-info"
               onPress={() => navigation.navigate('AccessLogs', { home })}
+            />
+          </View>
+          
+          <View className="flex-row">
+            <QuickActionButton
+              title="Member Management"
+              icon="people"
+              color="bg-purple-600"
+              onPress={handleMemberManagement}
+            />
+            <QuickActionButton
+              title="Security Settings"
+              icon="settings"
+              color="bg-neutral-600"
+              onPress={handleSecuritySettings}
             />
           </View>
         </View>
@@ -364,37 +442,90 @@ const HomeDashboardScreen: React.FC<HomeDashboardScreenProps> = ({ navigation, r
           ))}
         </View>
 
-        {/* Recent Activity */}
+        {/* Recent Activities */}
         <View className="mb-6">
-          <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-            Recent Activity
-          </Text>
-          
-          <View className={`rounded-xl p-4 ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${
-            isDark ? 'border-neutral-700' : 'border-neutral-200'
-          }`}>
-            {recentEvents.map(event => (
-              <View key={event.id} className="flex-row items-center mb-3 last:mb-0">
-                <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
-                  event.status === 'success' ? 'bg-success' : 'bg-error'
-                }`}>
-                  <Ionicons 
-                    name={event.type === 'access' ? 'person' : 'eye'} 
-                    size={16} 
-                    color="white" 
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-                    {event.personName || `${event.type} detected`}
-                  </Text>
-                  <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                    {event.location} • {event.timestamp}
-                  </Text>
-                </View>
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+              Recent Activities
+            </Text>
+            {activityCounts.unacknowledged > 0 && (
+              <View className="flex-row items-center">
+                <View className="w-2 h-2 bg-red-500 rounded-full mr-2" />
+                <Text className={`text-sm font-medium ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                  {activityCounts.unacknowledged} unacknowledged
+                </Text>
               </View>
-            ))}
+            )}
           </View>
+          
+          {loadingActivities ? (
+            <View className="items-center py-8">
+              <ActivityIndicator size="large" color={isDark ? '#3b82f6' : '#3b82f6'} />
+              <Text className={`mt-2 text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                Loading activities...
+              </Text>
+            </View>
+          ) : recentActivities.length > 0 ? (
+            <View>
+              {recentActivities.slice(0, 3).map((activity) => (
+                <View key={activity.id} className={`p-4 rounded-xl mb-3 ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${
+                  isDark ? 'border-neutral-700' : 'border-neutral-200'
+                }`}>
+                  <View className="flex-row items-start justify-between">
+                    <View className="flex-1">
+                      <Text className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                        {activity.title}
+                      </Text>
+                      {activity.description && (
+                        <Text className={`text-sm mt-1 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                          {activity.description}
+                        </Text>
+                      )}
+                      <View className="flex-row items-center mt-2">
+                        <View className={`px-2 py-1 rounded-full mr-2 ${
+                          activity.priority === 'CRITICAL' ? 'bg-red-100' :
+                          activity.priority === 'HIGH' ? 'bg-orange-100' :
+                          activity.priority === 'MEDIUM' ? 'bg-yellow-100' : 'bg-green-100'
+                        }`}>
+                          <Text className={`text-xs font-medium ${
+                            activity.priority === 'CRITICAL' ? 'text-red-800' :
+                            activity.priority === 'HIGH' ? 'text-orange-800' :
+                            activity.priority === 'MEDIUM' ? 'text-yellow-800' : 'text-green-800'
+                          }`}>
+                            {activity.priority}
+                          </Text>
+                        </View>
+                        <Text className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                          {new Date(activity.activityTimestamp).toLocaleString()}
+                        </Text>
+                      </View>
+                    </View>
+                    {!activity.isAcknowledged && (
+                      <View className="w-2 h-2 bg-red-500 rounded-full ml-2" />
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View className={`p-6 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${
+              isDark ? 'border-neutral-700' : 'border-neutral-200'
+            }`}>
+              <View className="items-center">
+                <Ionicons 
+                  name="time-outline" 
+                  size={32} 
+                  color={isDark ? '#a3a3a3' : '#737373'} 
+                />
+                <Text className={`mt-2 text-sm font-medium ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                  No recent activities
+                </Text>
+                <Text className={`text-xs text-center mt-1 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                  Activities will appear here when they occur
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

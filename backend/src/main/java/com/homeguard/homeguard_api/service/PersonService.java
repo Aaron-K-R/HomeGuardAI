@@ -7,6 +7,7 @@ import com.homeguard.homeguard_api.repository.PersonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -53,11 +54,26 @@ public class PersonService {
         Person person = personRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Person not found"));
         
-        person.setName(request.getName());
-        person.setPhone(request.getPhone());
-        person.setEmail(request.getEmail());
-        person.setPersonType(request.getPersonType());
-        person.setNotes(request.getNotes());
+        // Update fields only if they are provided (not null)
+        if (request.getName() != null) {
+            person.setName(request.getName());
+        }
+        if (request.getPhone() != null) {
+            person.setPhone(request.getPhone());
+        }
+        if (request.getEmail() != null) {
+            person.setEmail(request.getEmail());
+        }
+        if (request.getPersonType() != null) {
+            person.setPersonType(request.getPersonType());
+        }
+        if (request.getNotes() != null) {
+            person.setNotes(request.getNotes());
+        }
+        if (request.getProfileImagePath() != null) {
+            person.setProfileImagePath(request.getProfileImagePath());
+        }
+        
         person.setUpdatedAt(LocalDateTime.now());
         
         Person savedPerson = personRepository.save(person);
@@ -71,6 +87,27 @@ public class PersonService {
         person.setIsActive(false);
         person.setUpdatedAt(LocalDateTime.now());
         personRepository.save(person);
+    }
+    
+    public PersonResponseDto uploadPersonImage(String id, MultipartFile image) {
+        Person person = personRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Person not found"));
+        
+        // TODO: Implement image upload logic
+        // For now, just set a placeholder path
+        String imagePath = "/uploads/persons/" + id + "/" + image.getOriginalFilename();
+        person.setProfileImagePath(imagePath);
+        person.setUpdatedAt(LocalDateTime.now());
+        
+        Person savedPerson = personRepository.save(person);
+        return mapToResponseDto(savedPerson);
+    }
+    
+    public List<PersonResponseDto> getPersonsByHomeId(String homeId) {
+        // TODO: Implement query to get persons by home ID
+        // This would require a join with HomePerson table
+        // For now, return all active persons
+        return getAllActivePersons();
     }
     
     private PersonResponseDto mapToResponseDto(Person person) {

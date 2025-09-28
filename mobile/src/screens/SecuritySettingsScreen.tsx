@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -6,13 +6,15 @@ import {
   ScrollView, 
   StatusBar, 
   Alert,
-  Switch 
+  Switch,
+  ActivityIndicator 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
-import { Home, SecuritySettings } from '../types/Home';
+import { Home } from '../types/Home';
+import { securitySettingsService, SecuritySettingsRequest, SecuritySettingsResponse } from '../services/SecuritySettingsService';
 
 interface SecuritySettingsScreenProps {
   navigation: any;
@@ -28,30 +30,84 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
   const { user } = useUser();
   const { home } = route.params;
   
-  const [settings, setSettings] = useState<SecuritySettings>({
-    homeId: home.id,
-    armMode: 'away',
-    motionDetection: true,
-    doorSensors: true,
-    windowSensors: true,
-    cameraRecording: true,
-    nightVision: true,
-    alertsEnabled: true,
-    silentMode: false,
-    autoArm: false,
-    autoArmTime: '22:00',
-    emergencyContacts: ['+1-555-0123', '+1-555-0456'],
-    notificationSettings: {
-      push: true,
-      email: true,
-      sms: false
-    }
-  });
+  const [settings, setSettings] = useState<SecuritySettingsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSave = () => {
-    Alert.alert('Settings Saved', 'Your security settings have been updated successfully!');
-    navigation.goBack();
+  // Load security settings on mount
+  useEffect(() => {
+    loadSecuritySettings();
+  }, [home.id]);
+
+  const loadSecuritySettings = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await securitySettingsService.getSecuritySettingsByHomeId(home.id);
+      setSettings(response);
+    } catch (err) {
+      console.error('Error loading security settings:', err);
+      setError('Failed to load security settings');
+      // Create default settings if none exist
+      setSettings({
+        id: '',
+        homeId: home.id,
+        homeName: home.name,
+        homeAddress: home.address,
+        ownerId: user?.id || '',
+        ownerName: user?.firstName + ' ' + user?.lastName || '',
+        ownerEmail: user?.email || '',
+        motionDetectionEnabled: true,
+        doorSensorEnabled: true,
+        windowSensorEnabled: true,
+        cameraRecordingEnabled: true,
+        nightVisionEnabled: true,
+        alarmSensitivityLevel: 5,
+        autoArmTime: '22:00',
+        autoDisarmTime: '07:00',
+        emergencyContactsNotified: true,
+        policeNotificationEnabled: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        hasAutoArming: true,
+        hasCustomAlert: false,
+        securityLevel: 'basic'
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const saveSecuritySettings = useCallback(async (updatedSettings: Partial<SecuritySettingsRequest>) => {
+    if (!settings) return;
+    
+    try {
+      if (settings.id) {
+        // Update existing settings
+        const response = await securitySettingsService.updateSecuritySettings(settings.id, updatedSettings);
+        setSettings(response);
+      } else {
+        // Create new settings
+        const response = await securitySettingsService.createSecuritySettings(home.id, {
+          motionDetectionEnabled: updatedSettings.motionDetectionEnabled ?? settings.motionDetectionEnabled,
+          doorSensorEnabled: updatedSettings.doorSensorEnabled ?? settings.doorSensorEnabled,
+          windowSensorEnabled: updatedSettings.windowSensorEnabled ?? settings.windowSensorEnabled,
+          cameraRecordingEnabled: updatedSettings.cameraRecordingEnabled ?? settings.cameraRecordingEnabled,
+          nightVisionEnabled: updatedSettings.nightVisionEnabled ?? settings.nightVisionEnabled,
+          alarmSensitivityLevel: updatedSettings.alarmSensitivityLevel ?? settings.alarmSensitivityLevel,
+          autoArmTime: updatedSettings.autoArmTime ?? settings.autoArmTime,
+          autoDisarmTime: updatedSettings.autoDisarmTime ?? settings.autoDisarmTime,
+          emergencyContactsNotified: updatedSettings.emergencyContactsNotified ?? settings.emergencyContactsNotified,
+          policeNotificationEnabled: updatedSettings.policeNotificationEnabled ?? settings.policeNotificationEnabled,
+        });
+        setSettings(response);
+      }
+    } catch (err) {
+      console.error('Error saving security settings:', err);
+      Alert.alert('Error', 'Failed to save security settings');
+    }
+  }, [settings, home.id]);
+
 
   const handleReset = () => {
     Alert.alert(
@@ -60,20 +116,20 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Reset', style: 'destructive', onPress: () => {
-          // Reset to default settings
-          setSettings({
-            ...settings,
-            armMode: 'away',
-            motionDetection: true,
-            doorSensors: true,
-            windowSensors: true,
-            cameraRecording: true,
-            nightVision: true,
-            alertsEnabled: true,
-            silentMode: false,
-            autoArm: false,
-            autoArmTime: '22:00'
-          });
+          if (settings) {
+            saveSecuritySettings({
+              motionDetectionEnabled: true,
+              doorSensorEnabled: true,
+              windowSensorEnabled: true,
+              cameraRecordingEnabled: true,
+              nightVisionEnabled: true,
+              alarmSensitivityLevel: 5,
+              autoArmTime: '22:00',
+              autoDisarmTime: '07:00',
+              emergencyContactsNotified: true,
+              policeNotificationEnabled: false,
+            });
+          }
         }}
       ]
     );
@@ -128,93 +184,119 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
     </TouchableOpacity>
   );
 
-  const ArmModeSelector = () => (
-    <View className="mb-6">
-      <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-        Arm Mode
-      </Text>
-      <View className="flex-row space-x-2">
-        {['away', 'stay', 'night', 'off'].map(mode => (
-          <TouchableOpacity
-            key={mode}
-            className={`flex-1 p-3 rounded-xl border-2 ${
-              settings.armMode === mode
-                ? (isDark ? 'border-primary-600 bg-primary-600' : 'border-primary-500 bg-primary-500')
-                : (isDark ? 'border-neutral-700' : 'border-neutral-200')
-            }`}
-            onPress={() => setSettings({ ...settings, armMode: mode as any })}
-          >
-            <Text className={`text-center font-semibold ${
-              settings.armMode === mode
-                ? 'text-white'
-                : (isDark ? 'text-neutral-300' : 'text-neutral-700')
-            }`}>
-              {mode.charAt(0).toUpperCase() + mode.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+  const ArmModeSelector = () => {
+    if (!settings) return null;
+    
+    return (
+      <View className="mb-6">
+        <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+          Security Level: {settings.securityLevel.toUpperCase()}
+        </Text>
+        <View className="flex-row space-x-2">
+          {['basic', 'standard', 'premium'].map(level => (
+            <TouchableOpacity
+              key={level}
+              className={`flex-1 p-3 rounded-xl border-2 ${
+                settings.securityLevel === level
+                  ? (isDark ? 'border-primary-600 bg-primary-600' : 'border-primary-500 bg-primary-500')
+                  : (isDark ? 'border-neutral-700' : 'border-neutral-200')
+              }`}
+              onPress={() => {
+                // Security level is computed based on enabled features
+                Alert.alert('Info', 'Security level is automatically determined by your enabled features');
+              }}
+            >
+              <Text className={`text-center font-semibold ${
+                settings.securityLevel === level
+                  ? 'text-white'
+                  : (isDark ? 'text-neutral-300' : 'text-neutral-700')
+              }`}>
+                {level.charAt(0).toUpperCase() + level.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
-  const NotificationSettings = () => (
-    <View className="mb-6">
-      <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-        Notifications
-      </Text>
-      
-      <SettingRow
-        title="Push Notifications"
-        subtitle="Receive alerts on your device"
-        icon="notifications"
-        rightElement={
-          <Switch
-            value={settings.notificationSettings.push}
-            onValueChange={(value) => setSettings({
-              ...settings,
-              notificationSettings: { ...settings.notificationSettings, push: value }
-            })}
-            trackColor={{ false: '#767577', true: '#3b82f6' }}
-            thumbColor={settings.notificationSettings.push ? '#ffffff' : '#f4f3f4'}
-          />
-        }
-      />
-      
-      <SettingRow
-        title="Email Alerts"
-        subtitle="Receive alerts via email"
-        icon="mail"
-        rightElement={
-          <Switch
-            value={settings.notificationSettings.email}
-            onValueChange={(value) => setSettings({
-              ...settings,
-              notificationSettings: { ...settings.notificationSettings, email: value }
-            })}
-            trackColor={{ false: '#767577', true: '#3b82f6' }}
-            thumbColor={settings.notificationSettings.email ? '#ffffff' : '#f4f3f4'}
-          />
-        }
-      />
-      
-      <SettingRow
-        title="SMS Alerts"
-        subtitle="Receive alerts via text message"
-        icon="chatbubble"
-        rightElement={
-          <Switch
-            value={settings.notificationSettings.sms}
-            onValueChange={(value) => setSettings({
-              ...settings,
-              notificationSettings: { ...settings.notificationSettings, sms: value }
-            })}
-            trackColor={{ false: '#767577', true: '#3b82f6' }}
-            thumbColor={settings.notificationSettings.sms ? '#ffffff' : '#f4f3f4'}
-          />
-        }
-      />
-    </View>
-  );
+  const NotificationSettings = () => {
+    if (!settings) return null;
+    
+    return (
+      <View className="mb-6">
+        <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+          Notifications
+        </Text>
+        
+        <SettingRow
+          title="Emergency Contacts"
+          subtitle="Notify emergency contacts when alarm is triggered"
+          icon="people"
+          rightElement={
+            <Switch
+              value={settings.emergencyContactsNotified}
+              onValueChange={(value) => saveSecuritySettings({ emergencyContactsNotified: value })}
+              trackColor={{ false: '#767577', true: '#3b82f6' }}
+              thumbColor={settings.emergencyContactsNotified ? '#ffffff' : '#f4f3f4'}
+            />
+          }
+        />
+        
+        <SettingRow
+          title="Police Notification"
+          subtitle="Automatically notify police when alarm is triggered"
+          icon="shield"
+          rightElement={
+            <Switch
+              value={settings.policeNotificationEnabled}
+              onValueChange={(value) => saveSecuritySettings({ policeNotificationEnabled: value })}
+              trackColor={{ false: '#767577', true: '#3b82f6' }}
+              thumbColor={settings.policeNotificationEnabled ? '#ffffff' : '#f4f3f4'}
+            />
+          }
+        />
+      </View>
+    );
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView className={`flex-1 ${isDark ? 'bg-neutral-900' : 'bg-neutral-50'}`}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={isDark ? '#3b82f6' : '#3b82f6'} />
+          <Text className={`mt-4 text-lg ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+            Loading security settings...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error && !settings) {
+    return (
+      <SafeAreaView className={`flex-1 ${isDark ? 'bg-neutral-900' : 'bg-neutral-50'}`}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View className="flex-1 justify-center items-center px-6">
+          <Ionicons name="warning" size={48} color={isDark ? '#ef4444' : '#ef4444'} />
+          <Text className={`mt-4 text-lg font-semibold text-center ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+            {error}
+          </Text>
+          <TouchableOpacity
+            className={`mt-4 py-3 px-6 rounded-xl ${isDark ? 'bg-primary-600' : 'bg-primary-500'}`}
+            onPress={loadSecuritySettings}
+          >
+            <Text className="text-white font-semibold">Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!settings) return null;
 
   return (
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-neutral-900' : 'bg-neutral-50'}`}>
@@ -252,7 +334,7 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
       </View>
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
-        {/* Arm Mode */}
+        {/* Security Level */}
         <ArmModeSelector />
 
         {/* Security Features */}
@@ -267,10 +349,10 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
             icon="eye"
             rightElement={
               <Switch
-                value={settings.motionDetection}
-                onValueChange={(value) => setSettings({ ...settings, motionDetection: value })}
+                value={settings.motionDetectionEnabled}
+                onValueChange={(value) => saveSecuritySettings({ motionDetectionEnabled: value })}
                 trackColor={{ false: '#767577', true: '#3b82f6' }}
-                thumbColor={settings.motionDetection ? '#ffffff' : '#f4f3f4'}
+                thumbColor={settings.motionDetectionEnabled ? '#ffffff' : '#f4f3f4'}
               />
             }
           />
@@ -278,13 +360,13 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
           <SettingRow
             title="Door Sensors"
             subtitle="Monitor door openings and closings"
-            icon="door-open"
+            icon="home"
             rightElement={
               <Switch
-                value={settings.doorSensors}
-                onValueChange={(value) => setSettings({ ...settings, doorSensors: value })}
+                value={settings.doorSensorEnabled}
+                onValueChange={(value) => saveSecuritySettings({ doorSensorEnabled: value })}
                 trackColor={{ false: '#767577', true: '#3b82f6' }}
-                thumbColor={settings.doorSensors ? '#ffffff' : '#f4f3f4'}
+                thumbColor={settings.doorSensorEnabled ? '#ffffff' : '#f4f3f4'}
               />
             }
           />
@@ -292,13 +374,13 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
           <SettingRow
             title="Window Sensors"
             subtitle="Monitor window openings and closings"
-            icon="window"
+            icon="square"
             rightElement={
               <Switch
-                value={settings.windowSensors}
-                onValueChange={(value) => setSettings({ ...settings, windowSensors: value })}
+                value={settings.windowSensorEnabled}
+                onValueChange={(value) => saveSecuritySettings({ windowSensorEnabled: value })}
                 trackColor={{ false: '#767577', true: '#3b82f6' }}
-                thumbColor={settings.windowSensors ? '#ffffff' : '#f4f3f4'}
+                thumbColor={settings.windowSensorEnabled ? '#ffffff' : '#f4f3f4'}
               />
             }
           />
@@ -309,10 +391,10 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
             icon="videocam"
             rightElement={
               <Switch
-                value={settings.cameraRecording}
-                onValueChange={(value) => setSettings({ ...settings, cameraRecording: value })}
+                value={settings.cameraRecordingEnabled}
+                onValueChange={(value) => saveSecuritySettings({ cameraRecordingEnabled: value })}
                 trackColor={{ false: '#767577', true: '#3b82f6' }}
-                thumbColor={settings.cameraRecording ? '#ffffff' : '#f4f3f4'}
+                thumbColor={settings.cameraRecordingEnabled ? '#ffffff' : '#f4f3f4'}
               />
             }
           />
@@ -323,130 +405,54 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
             icon="moon"
             rightElement={
               <Switch
-                value={settings.nightVision}
-                onValueChange={(value) => setSettings({ ...settings, nightVision: value })}
+                value={settings.nightVisionEnabled}
+                onValueChange={(value) => saveSecuritySettings({ nightVisionEnabled: value })}
                 trackColor={{ false: '#767577', true: '#3b82f6' }}
-                thumbColor={settings.nightVision ? '#ffffff' : '#f4f3f4'}
+                thumbColor={settings.nightVisionEnabled ? '#ffffff' : '#f4f3f4'}
               />
             }
           />
         </View>
 
-        {/* Alert Settings */}
+        {/* Alarm Sensitivity */}
         <View className="mb-6">
           <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-            Alert Settings
+            Alarm Sensitivity
           </Text>
           
           <SettingRow
-            title="Alerts Enabled"
-            subtitle="Receive security alerts"
-            icon="warning"
-            rightElement={
-              <Switch
-                value={settings.alertsEnabled}
-                onValueChange={(value) => setSettings({ ...settings, alertsEnabled: value })}
-                trackColor={{ false: '#767577', true: '#3b82f6' }}
-                thumbColor={settings.alertsEnabled ? '#ffffff' : '#f4f3f4'}
-              />
-            }
+            title="Sensitivity Level"
+            subtitle={`Level ${settings.alarmSensitivityLevel} of 10`}
+            icon="speedometer"
+            onPress={() => Alert.alert('Sensitivity', 'Sensitivity adjustment coming soon!')}
+          />
+        </View>
+
+        {/* Auto Arm Settings */}
+        <View className="mb-6">
+          <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+            Auto Arm Settings
+          </Text>
+          
+          <SettingRow
+            title="Auto Arm Time"
+            subtitle={settings.autoArmTime ? `Arm at ${settings.autoArmTime}` : 'Not set'}
+            icon="time"
+            onPress={() => Alert.alert('Time Picker', 'Time picker coming soon!')}
           />
           
           <SettingRow
-            title="Silent Mode"
-            subtitle="Disable sound alerts"
-            icon="volume-mute"
-            rightElement={
-              <Switch
-                value={settings.silentMode}
-                onValueChange={(value) => setSettings({ ...settings, silentMode: value })}
-                trackColor={{ false: '#767577', true: '#3b82f6' }}
-                thumbColor={settings.silentMode ? '#ffffff' : '#f4f3f4'}
-              />
-            }
+            title="Auto Disarm Time"
+            subtitle={settings.autoDisarmTime ? `Disarm at ${settings.autoDisarmTime}` : 'Not set'}
+            icon="time-outline"
+            onPress={() => Alert.alert('Time Picker', 'Time picker coming soon!')}
           />
         </View>
 
         {/* Notification Settings */}
         <NotificationSettings />
-
-        {/* Auto Arm */}
-        <View className="mb-6">
-          <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-            Auto Arm
-          </Text>
-          
-          <SettingRow
-            title="Auto Arm"
-            subtitle="Automatically arm system at scheduled time"
-            icon="time"
-            rightElement={
-              <Switch
-                value={settings.autoArm}
-                onValueChange={(value) => setSettings({ ...settings, autoArm: value })}
-                trackColor={{ false: '#767577', true: '#3b82f6' }}
-                thumbColor={settings.autoArm ? '#ffffff' : '#f4f3f4'}
-              />
-            }
-          />
-          
-          {settings.autoArm && (
-            <SettingRow
-              title="Arm Time"
-              subtitle={`Automatically arm at ${settings.autoArmTime}`}
-              icon="clock"
-              onPress={() => Alert.alert('Time Picker', 'Time picker coming soon!')}
-            />
-          )}
-        </View>
-
-        {/* Emergency Contacts */}
-        <View className="mb-6">
-          <Text className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-            Emergency Contacts
-          </Text>
-          
-          {settings.emergencyContacts.map((contact, index) => (
-            <SettingRow
-              key={index}
-              title={`Contact ${index + 1}`}
-              subtitle={contact}
-              icon="call"
-              onPress={() => Alert.alert('Edit Contact', 'Contact editing coming soon!')}
-            />
-          ))}
-          
-          <TouchableOpacity
-            className={`p-4 rounded-xl border-2 border-dashed ${
-              isDark ? 'border-neutral-600' : 'border-neutral-300'
-            } items-center`}
-            onPress={() => Alert.alert('Add Contact', 'Add contact coming soon!')}
-          >
-            <Ionicons 
-              name="add-circle-outline" 
-              size={24} 
-              color={isDark ? '#a3a3a3' : '#737373'} 
-            />
-            <Text className={`text-sm font-semibold mt-2 ${
-              isDark ? 'text-neutral-300' : 'text-neutral-600'
-            }`}>
-              Add Emergency Contact
-            </Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
-      {/* Save Button */}
-      <View className="px-6 py-4 border-t border-neutral-200 dark:border-neutral-700">
-        <TouchableOpacity
-          className={`py-4 px-6 rounded-xl ${isDark ? 'bg-primary-600' : 'bg-primary-500'}`}
-          onPress={handleSave}
-        >
-          <Text className="text-white text-lg font-semibold text-center">
-            Save Settings
-          </Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };

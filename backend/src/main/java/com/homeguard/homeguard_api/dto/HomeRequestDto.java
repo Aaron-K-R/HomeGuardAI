@@ -42,5 +42,5 @@ public class HomeRequestDto {
     private String description;
     
     @Size(max = 100)
-    private String securitySystemType; // "basic", "premium", "custom"
+    private String securitySystemType; // "basic", "premium", "custom" - optional
 }

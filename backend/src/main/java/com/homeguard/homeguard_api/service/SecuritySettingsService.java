@@ -33,9 +33,10 @@ public class SecuritySettingsService {
         Home home = homeRepository.findById(homeId)
             .orElseThrow(() -> HomeNotFoundException.withId(homeId));
         
-        // Check if settings already exist
+        // Check if settings already exist - if they do, return existing settings
         if (securitySettingsRepository.findByHome(home).isPresent()) {
-            throw new SecuritySettingsNotFoundException("Security settings already exist for home id: " + homeId);
+            log.info("Security settings already exist for home id: {}, returning existing settings", homeId);
+            return getSecuritySettingsByHomeId(homeId);
         }
         
         // Create new security settings
@@ -73,7 +74,10 @@ public class SecuritySettingsService {
         log.info("Fetching security settings for home id: {}", homeId);
         
         SecuritySettings settings = securitySettingsRepository.findByHomeId(homeId)
-            .orElseThrow(() -> SecuritySettingsNotFoundException.withHomeId(homeId));
+            .orElseGet(() -> {
+                log.info("No security settings found for home id: {}, creating default settings", homeId);
+                return createDefaultSecuritySettings(homeId);
+            });
         
         return convertToResponseDto(settings);
     }
@@ -217,5 +221,30 @@ public class SecuritySettingsService {
         responseDto.setSecurityLevel(responseDto.getSecurityLevel());
         
         return responseDto;
+    }
+    
+    /**
+     * Creates default security settings for a home if they don't exist
+     */
+    private SecuritySettings createDefaultSecuritySettings(String homeId) {
+        Home home = homeRepository.findById(homeId)
+            .orElseThrow(() -> HomeNotFoundException.withId(homeId));
+        
+        SecuritySettings settings = new SecuritySettings();
+        settings.setHome(home);
+        
+        // Set default values (same as in HomeService)
+        settings.setMotionDetectionEnabled(true);
+        settings.setDoorSensorEnabled(true);
+        settings.setWindowSensorEnabled(true);
+        settings.setCameraRecordingEnabled(true);
+        settings.setNightVisionEnabled(true);
+        settings.setAlarmSensitivityLevel(5);
+        settings.setAutoArmTime("22:00");
+        settings.setAutoDisarmTime("07:00");
+        settings.setEmergencyContactsNotified(true);
+        settings.setPoliceNotificationEnabled(false);
+        
+        return securitySettingsRepository.save(settings);
     }
 }

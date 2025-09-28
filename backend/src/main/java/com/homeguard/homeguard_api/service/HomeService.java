@@ -3,12 +3,14 @@ package com.homeguard.homeguard_api.service;
 import com.homeguard.homeguard_api.dto.HomeRequestDto;
 import com.homeguard.homeguard_api.dto.HomeResponseDto;
 import com.homeguard.homeguard_api.dto.HomeUpdateDto;
+import com.homeguard.homeguard_api.dto.SecuritySettingsRequestDto;
 import com.homeguard.homeguard_api.exception.HomeNotFoundException;
 import com.homeguard.homeguard_api.exception.UserNotFoundException;
 import com.homeguard.homeguard_api.model.Home;
 import com.homeguard.homeguard_api.model.User;
 import com.homeguard.homeguard_api.repository.HomeRepository;
 import com.homeguard.homeguard_api.repository.UserRepository;
+import com.homeguard.homeguard_api.service.SecuritySettingsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,6 +29,7 @@ public class HomeService {
     
     private final HomeRepository homeRepository;
     private final UserRepository userRepository;
+    private final SecuritySettingsService securitySettingsService;
     
     public HomeResponseDto createHome(String ownerId, HomeRequestDto requestDto) {
         log.info("Creating home '{}' for owner id: {}", requestDto.getName(), ownerId);
@@ -59,10 +62,20 @@ public class HomeService {
         home.setHomeType(requestDto.getHomeType());
         home.setIsPrimary(requestDto.getIsPrimary());
         home.setDescription(requestDto.getDescription());
-        home.setSecuritySystemType(requestDto.getSecuritySystemType());
+        home.setSecuritySystemType(requestDto.getSecuritySystemType() != null ? requestDto.getSecuritySystemType() : "basic");
         
         Home savedHome = homeRepository.save(home);
         log.info("Home created successfully with id: {}", savedHome.getId());
+        
+        // Create default security settings for the new home
+        try {
+            SecuritySettingsRequestDto defaultSecuritySettings = createDefaultSecuritySettings();
+            securitySettingsService.createSecuritySettings(savedHome.getId(), defaultSecuritySettings);
+            log.info("Default security settings created for home id: {}", savedHome.getId());
+        } catch (Exception e) {
+            log.error("Failed to create default security settings for home id: {}", savedHome.getId(), e);
+            // Don't fail the home creation if security settings creation fails
+        }
         
         return convertToResponseDto(savedHome);
     }
@@ -294,5 +307,34 @@ public class HomeService {
         responseDto.setHasCoordinates(responseDto.isHasCoordinates());
         
         return responseDto;
+    }
+    
+    /**
+     * Creates default security settings for a new home
+     */
+    private SecuritySettingsRequestDto createDefaultSecuritySettings() {
+        SecuritySettingsRequestDto defaultSettings = new SecuritySettingsRequestDto();
+        
+        // Enable all basic security features by default
+        defaultSettings.setMotionDetectionEnabled(true);
+        defaultSettings.setDoorSensorEnabled(true);
+        defaultSettings.setWindowSensorEnabled(true);
+        defaultSettings.setCameraRecordingEnabled(true);
+        defaultSettings.setNightVisionEnabled(true);
+        
+        // Set moderate alarm sensitivity
+        defaultSettings.setAlarmSensitivityLevel(5);
+        
+        // Set default auto-arm times (10 PM to 7 AM)
+        defaultSettings.setAutoArmTime("22:00");
+        defaultSettings.setAutoDisarmTime("07:00");
+        
+        // Enable emergency contacts notification by default
+        defaultSettings.setEmergencyContactsNotified(true);
+        
+        // Disable police notification by default (user must explicitly enable)
+        defaultSettings.setPoliceNotificationEnabled(false);
+        
+        return defaultSettings;
     }
 }

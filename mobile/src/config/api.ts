@@ -1,8 +1,8 @@
 // Environment variables - these will be read from .env file by Expo
 const EXPO_PUBLIC_SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-const EXPO_PUBLIC_SPRING_API_BASE_URL = process.env.EXPO_PUBLIC_SPRING_API_BASE_URL;
-const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT;
+const EXPO_PUBLIC_SPRING_API_BASE_URL = process.env.EXPO_PUBLIC_SPRING_API_BASE_URL || 'http://192.168.254.46:8080/api/v1';
+const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT || 'development';
 
 // Validate required environment variables
 if (!EXPO_PUBLIC_SUPABASE_URL) {
@@ -44,6 +44,8 @@ export const API_CONFIG = {
     RFID_CARDS: '/rfid-cards',
     APP_SETTINGS: '/app-settings',
     SECURITY_SETTINGS: '/security-settings',
+    HOME_INVITATIONS: '/home-invitations',
+    PERSONS: '/persons',
   },
   
   // Request timeouts
