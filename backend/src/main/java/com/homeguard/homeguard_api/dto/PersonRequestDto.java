@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import java.util.List;
 
 @Getter
 @Setter
@@ -31,4 +32,7 @@ public class PersonRequestDto {
     
     @Size(max = 500)
     private String profileImagePath;
+    
+    // Field for multiple face images (Supabase URLs)
+    private List<String> faceImageUrls;
 }

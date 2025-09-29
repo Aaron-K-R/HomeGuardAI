@@ -171,6 +171,58 @@ class HomeActivityService {
       throw error;
     }
   }
+
+  /**
+   * Get recent activities for all homes that a user has access to
+   * This method fetches activities from each home individually and combines them
+   */
+  async getGlobalRecentActivities(homeIds: string[], hours: number = 24): Promise<HomeActivity[]> {
+    try {
+      // Fetch activities from all homes in parallel
+      const activityPromises = homeIds.map(homeId => 
+        this.getRecentActivities(homeId, hours).catch(error => {
+          console.warn(`Failed to fetch activities for home ${homeId}:`, error);
+          return []; // Return empty array if one home fails
+        })
+      );
+
+      const activityArrays = await Promise.all(activityPromises);
+      
+      // Flatten and sort by timestamp (most recent first)
+      const allActivities = activityArrays.flat();
+      return allActivities.sort((a, b) => 
+        new Date(b.activityTimestamp).getTime() - new Date(a.activityTimestamp).getTime()
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get unacknowledged activities for all homes that a user has access to
+   * This method fetches activities from each home individually and combines them
+   */
+  async getGlobalUnacknowledgedActivities(homeIds: string[]): Promise<HomeActivity[]> {
+    try {
+      // Fetch unacknowledged activities from all homes in parallel
+      const activityPromises = homeIds.map(homeId => 
+        this.getUnacknowledgedActivities(homeId).catch(error => {
+          console.warn(`Failed to fetch unacknowledged activities for home ${homeId}:`, error);
+          return []; // Return empty array if one home fails
+        })
+      );
+
+      const activityArrays = await Promise.all(activityPromises);
+      
+      // Flatten and sort by timestamp (most recent first)
+      const allActivities = activityArrays.flat();
+      return allActivities.sort((a, b) => 
+        new Date(b.activityTimestamp).getTime() - new Date(a.activityTimestamp).getTime()
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 export const homeActivityService = new HomeActivityService();

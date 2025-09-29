@@ -15,8 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
-import { personService } from '../services/PersonService';
-import { PersonResponse } from '../services/PersonService';
+import { homePersonService } from '../services/HomePersonService';
+import { HomePersonResponse } from '../services/HomePersonService';
 
 interface FaceProfile {
   id: string;
@@ -80,7 +80,7 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
     );
   }
   
-  const [persons, setPersons] = useState<PersonResponse[]>([]);
+  const [homePersons, setHomePersons] = useState<HomePersonResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -92,13 +92,13 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
   // Load persons on mount
   useEffect(() => {
     loadPersons();
-  }, []);
+  }, [home.id]);
 
   const loadPersons = async () => {
     try {
       setIsLoading(true);
-      const personsData = await personService.getAllActivePersons();
-      setPersons(personsData);
+      const homePersonsData = await homePersonService.getPersonsByHomeId(home.id);
+      setHomePersons(homePersonsData);
     } catch (error) {
       console.error('Error loading persons:', error);
       Alert.alert('Error', 'Failed to load persons');
@@ -107,18 +107,13 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
     }
   };
 
-  const handleToggleProfile = async (personId: string) => {
+  const handleToggleProfile = async (homePersonId: string) => {
     try {
-      const person = persons.find(p => p.id === personId);
-      if (!person) return;
+      const homePerson = homePersons.find(hp => hp.id === homePersonId);
+      if (!homePerson) return;
 
-      await personService.updatePerson(personId, {
-        name: person.name,
-        phone: person.phone,
-        email: person.email,
-        personType: person.personType,
-        notes: person.notes,
-        isActive: !person.isActive
+      await homePersonService.updatePersonAccess(homePersonId, {
+        accessLevel: homePerson.accessLevel
       });
       
       loadPersons(); // Refresh the list
@@ -128,22 +123,22 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
     }
   };
 
-  const handleDeleteProfile = (personId: string) => {
+  const handleDeleteProfile = (homePersonId: string) => {
     Alert.alert(
-      'Delete Person',
-      'Are you sure you want to delete this person? This will also remove their face profile and all photos.',
+      'Remove Person',
+      'Are you sure you want to remove this person from the home?',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Delete', 
+          text: 'Remove', 
           style: 'destructive',
           onPress: async () => {
             try {
-              await personService.deletePerson(personId);
+              await homePersonService.removePersonFromHome(homePersonId);
               loadPersons(); // Refresh the list
             } catch (error) {
-              console.error('Error deleting person:', error);
-              Alert.alert('Error', 'Failed to delete person');
+              console.error('Error removing person:', error);
+              Alert.alert('Error', 'Failed to remove person');
             }
           }
         }
@@ -158,10 +153,19 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
     }
 
     try {
-      await personService.createPerson({
+      // First create the person
+      const { personService } = await import('../services/PersonService');
+      const newPerson = await personService.createPerson({
         name: newProfileName.trim(),
         personType: 'FAMILY_MEMBER',
         isActive: true
+      });
+
+      // Then link them to the home
+      await homePersonService.linkPersonToHome({
+        homeId: home.id,
+        personId: newPerson.id,
+        accessLevel: 'FULL_ACCESS'
       });
       
       setNewProfileName('');
@@ -180,7 +184,11 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
     return isDark ? '#ef4444' : '#dc2626';
   };
 
-  const FaceProfileCard = ({ person }: { person: PersonResponse }) => (
+  const FaceProfileCard = ({ homePerson }: { homePerson: HomePersonResponse }) => {
+    const person = homePerson.person;
+    if (!person) return null;
+    
+    return (
     <View className={`p-6 rounded-2xl mb-4 border ${
       isDark 
         ? 'bg-neutral-800 border-neutral-700' 
@@ -213,18 +221,18 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
                 {person.name}
               </Text>
               <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                {person.personType.replace('_', ' ')} • {person.faceVector ? 'Face Profile ✓' : 'No Face Profile'}
+                {person.personType.replace('_', ' ')} • {person.profileImagePath ? 'Face Profile ✓' : 'No Face Profile'}
               </Text>
             </View>
             <View className={`px-3 py-1 rounded-full ${
-              person.isActive 
+              homePerson.isActive 
                 ? (isDark ? 'bg-green-600' : 'bg-green-500')
                 : (isDark ? 'bg-neutral-600' : 'bg-neutral-300')
             }`}>
               <Text className={`text-xs font-medium ${
-                person.isActive ? 'text-white' : (isDark ? 'text-neutral-300' : 'text-neutral-600')
+                homePerson.isActive ? 'text-white' : (isDark ? 'text-neutral-300' : 'text-neutral-600')
               }`}>
-                {person.isActive ? 'Active' : 'Inactive'}
+                {homePerson.isActive ? 'Active' : 'Inactive'}
               </Text>
             </View>
           </View>
@@ -232,57 +240,26 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
       </View>
       
       {/* Face Profile Status */}
-      <View className="flex-row justify-between items-center mb-4">
-        <View className="flex-row items-center">
-          <Ionicons 
-            name={person.faceVector ? "checkmark-circle" : "close-circle"} 
-            size={16} 
-            color={person.faceVector ? (isDark ? '#10b981' : '#059669') : (isDark ? '#ef4444' : '#dc2626')} 
-          />
-          <Text className={`text-sm ml-2 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-            {person.faceVector ? 'Face profile ready' : 'No face profile'}
-          </Text>
-        </View>
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('HomeManagement', { home })}
-          className="px-3 py-1 rounded-full bg-primary-500"
-        >
-          <Text className="text-white text-xs font-medium">
-            Manage
-          </Text>
-        </TouchableOpacity>
+      <View className="flex-row items-center mb-4">
+        <Ionicons 
+          name={person.profileImagePath ? "checkmark-circle" : "close-circle"} 
+          size={16} 
+          color={person.profileImagePath ? (isDark ? '#10b981' : '#059669') : (isDark ? '#ef4444' : '#dc2626')} 
+        />
+        <Text className={`text-sm ml-2 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+          {person.profileImagePath ? 'Face profile ready' : 'No face profile'}
+        </Text>
       </View>
       
       {/* Last Seen */}
-      <View className="flex-row justify-between items-center mb-4">
+      <View className="flex-row items-center mb-4">
         <Text className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-          {person.lastSeen ? `Last seen: ${person.lastSeen}` : 'Never seen'}
+          {homePerson.lastAccessed ? `Last accessed: ${homePerson.lastAccessed}` : 'Never accessed'}
         </Text>
-        <View className="flex-row">
-          <TouchableOpacity 
-            className="p-2 mr-2"
-            onPress={() => handleToggleProfile(person.id)}
-          >
-            <Ionicons 
-              name={person.isActive ? "eye" : "eye-off"} 
-              size={16} 
-              color={isDark ? '#a3a3a3' : '#737373'} 
-            />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            className="p-2"
-            onPress={() => handleDeleteProfile(person.id)}
-          >
-            <Ionicons 
-              name="trash-outline" 
-              size={16} 
-              color={isDark ? '#ef4444' : '#dc2626'} 
-            />
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
-  );
+    );
+  };
 
   const AddProfileModal = () => (
     <Modal
@@ -421,18 +398,7 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
           </View>
         </View>
         <View className="flex-row space-x-2">
-          <TouchableOpacity
-            onPress={loadPersons}
-            className={`p-2 rounded-full ${isDark ? 'bg-neutral-700' : 'bg-neutral-200'}`}
-          >
-            <Ionicons name="refresh" size={20} color={isDark ? '#ffffff' : '#000000'} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('HomeManagement', { home })}
-            className={`p-2 rounded-full ${isDark ? 'bg-primary-600' : 'bg-primary-500'}`}
-          >
-            <Ionicons name="people" size={20} color="white" />
-          </TouchableOpacity>
+          
         </View>
       </View>
 
@@ -479,7 +445,7 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
             isDark ? 'bg-neutral-800' : 'bg-white'
           }`}>
             <Text className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-              {persons.length}
+              {homePersons.length}
             </Text>
             <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
               Total Persons
@@ -489,7 +455,7 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
             isDark ? 'bg-neutral-800' : 'bg-white'
           }`}>
             <Text className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-              {persons.filter(p => p.faceVector).length}
+              {homePersons.filter(hp => hp.person?.profileImagePath).length}
             </Text>
             <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
               With Face Profiles
@@ -504,7 +470,7 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
               Face Profiles
             </Text>
             <TouchableOpacity 
-              onPress={() => navigation.navigate('HomeManagement', { home })}
+              onPress={() => navigation.navigate('MemberManagement', { home })}
               className="px-3 py-1 rounded-full bg-primary-500"
             >
               <Text className="text-white text-sm font-medium">
@@ -524,7 +490,7 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
                 Loading persons...
               </Text>
             </View>
-          ) : persons.length === 0 ? (
+          ) : homePersons.length === 0 ? (
             <View className={`p-8 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'} items-center`}>
               <Ionicons 
                 name="person-outline" 
@@ -535,20 +501,20 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
                 No persons yet
               </Text>
               <Text className={`text-sm text-center mt-2 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                Add persons in Home Management to set up face recognition
+                Add persons in Member Management to set up face recognition
               </Text>
               <TouchableOpacity 
-                onPress={() => navigation.navigate('HomeManagement', { home })}
+                onPress={() => navigation.navigate('MemberManagement', { home })}
                 className="mt-4 px-4 py-2 rounded-lg bg-primary-500"
               >
                 <Text className="text-white font-medium">
-                  Go to Home Management
+                  Go to Member Management
                 </Text>
               </TouchableOpacity>
             </View>
           ) : (
-            persons.map((person) => (
-              <FaceProfileCard key={person.id} person={person} />
+            homePersons.map((homePerson) => (
+              <FaceProfileCard key={homePerson.id} homePerson={homePerson} />
             ))
           )}
         </View>

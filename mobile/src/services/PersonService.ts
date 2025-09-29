@@ -10,6 +10,7 @@ export interface PersonRequest {
   faceVector?: number[];
   isActive?: boolean;
   notes?: string;
+  faceImageUrls?: string[]; // Supabase image URLs for face embedding generation
 }
 
 export interface PersonResponse {
@@ -174,6 +175,30 @@ class PersonService {
     try {
       const result = await supabaseStorageService.uploadMultipleImages(id, imageUris);
       return result.images;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Generate face embeddings for a person from their uploaded images
+   */
+  async generateFaceEmbeddings(id: string, imageUrls: string[]): Promise<PersonResponse> {
+    try {
+      const response = await fetch(`${this.baseUrl}${this.endpoint}/${id}/generate-embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(imageUrls),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
     } catch (error) {
       throw error;
     }

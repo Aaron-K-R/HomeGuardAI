@@ -61,4 +61,12 @@ public class PersonController {
         List<PersonResponseDto> response = personService.getPersonsByHomeId(homeId);
         return ResponseEntity.ok(response);
     }
+    
+    @PostMapping("/{id}/generate-embeddings")
+    public ResponseEntity<PersonResponseDto> generateFaceEmbeddings(
+            @PathVariable String id,
+            @RequestBody List<String> imageUrls) {
+        PersonResponseDto response = personService.generateFaceEmbeddings(id, imageUrls);
+        return ResponseEntity.ok(response);
+    }
 }

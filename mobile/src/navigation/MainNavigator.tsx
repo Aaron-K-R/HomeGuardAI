@@ -11,6 +11,7 @@ import HomeListScreen from '../screens/HomeListScreen';
 import MemberManagementScreen from '../screens/MemberManagementScreen';
 import ManagePeopleScreen from '../screens/ManagePeopleScreen';
 import RecentActivitiesScreen from '../screens/RecentActivitiesScreen';
+import GlobalActivitiesScreen from '../screens/GlobalActivitiesScreen';
 import DeviceManagementScreen from '../screens/DeviceManagementScreen';
 import DeadboltControlScreen from '../screens/DeadboltControlScreen';
 import FaceDetectionScreen from '../screens/FaceDetectionScreen';
@@ -97,6 +98,13 @@ const MainNavigator: React.FC = () => {
       <Stack.Screen 
         name="RecentActivities" 
         component={RecentActivitiesScreen}
+        options={{
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen 
+        name="GlobalActivities" 
+        component={GlobalActivitiesScreen}
         options={{
           gestureEnabled: true,
         }}

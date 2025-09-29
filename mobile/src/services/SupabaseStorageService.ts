@@ -13,7 +13,7 @@ export interface MultipleImageUploadResult {
 }
 
 class SupabaseStorageService {
-  private bucketName = 'person-images'; // Change this if you use a different bucket name
+  private bucketName = 'person-images'; // Make sure this bucket exists in your Supabase project
 
   /**
    * Upload a single image to Supabase storage
@@ -44,15 +44,19 @@ class SupabaseStorageService {
         throw new Error(`Upload failed: ${error.message}`);
       }
 
-      // Get public URL
-      const { data: publicUrlData } = supabase.storage
+      // Get signed URL (valid for 1 hour)
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from(this.bucketName)
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+      if (signedUrlError) {
+        throw new Error(`Failed to create signed URL: ${signedUrlError.message}`);
+      }
 
       return {
         url: data.path,
         path: filePath,
-        publicUrl: publicUrlData.publicUrl
+        publicUrl: signedUrlData.signedUrl
       };
     } catch (error) {
       throw error;

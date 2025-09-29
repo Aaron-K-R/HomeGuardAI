@@ -21,7 +21,8 @@ import { useUser } from '../contexts/UserContext';
 import { supabase } from '../services/AuthService';
 import { personService } from '../services/PersonService';
 import { homePersonService } from '../services/HomePersonService';
-import { PersonResponse } from '../types/Person';
+import { faceEnrollmentService } from '../services/FaceEnrollmentService';
+import { PersonResponse } from '../services/PersonService';
 import { HomePersonResponse } from '../services/HomePersonService';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -57,7 +58,7 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
   const [personName, setPersonName] = useState('');
   const [personPhone, setPersonPhone] = useState('');
   const [personEmail, setPersonEmail] = useState('');
-  const [personType, setPersonType] = useState<'FAMILY_MEMBER' | 'GUEST' | 'SERVICE_PROVIDER' | 'EMERGENCY_CONTACT'>('FAMILY_MEMBER');
+  const [personType, setPersonType] = useState<'FAMILY_MEMBER' | 'REGULAR_GUEST' | 'SERVICE_WORKER' | 'DELIVERY_PERSON' | 'MAINTENANCE' | 'VISITOR' | 'UNKNOWN'>('FAMILY_MEMBER');
   const [personNotes, setPersonNotes] = useState('');
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [showPersonDetailModal, setShowPersonDetailModal] = useState(false);
@@ -98,8 +99,9 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
-        quality: 0.8,
-        aspect: [1, 1],
+        quality: 1.0, // No compression for better face detection
+        allowsEditing: false, // Don't force editing/cropping
+        exif: true, // Preserve EXIF data for proper orientation
       });
 
       if (!result.canceled && result.assets) {
@@ -142,8 +144,8 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
     try {
       setIsAddingPerson(true);
       
-      // Create the person first
-      const person = {
+      // Prepare person data
+      const personData = {
         name: personName.trim(),
         phone: personPhone.trim() || undefined,
         email: personEmail.trim() || undefined,
@@ -151,18 +153,35 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
         notes: personNotes.trim() || undefined,
       };
 
-      const createdPerson = await personService.createPerson(person);
-      
-      // Upload images if selected
+      let createdPerson: PersonResponse;
+
+      // If images are selected, use the integrated face enrollment service
       if (selectedImages.length > 0) {
         setIsUploadingImages(true);
         try {
-          await personService.uploadMultiplePersonImages(createdPerson.id, selectedImages);
+          console.log(`Creating person with ${selectedImages.length} face images for automatic face recognition`);
+          
+          const enrollmentResult = await faceEnrollmentService.createPersonWithFaces(personData, selectedImages);
+          
+          if (!enrollmentResult.success) {
+            throw new Error(enrollmentResult.error || 'Face enrollment failed');
+          }
+          
+          // Get the created person details
+          createdPerson = await personService.getPersonById(enrollmentResult.personId);
+          
+          console.log('Person created with face embeddings:', enrollmentResult.faceEmbeddingsGenerated);
         } catch (imageError) {
-          Alert.alert('Warning', 'Person created but image upload failed');
+          console.error('Face enrollment failed, creating person without face recognition:', imageError);
+          // Fallback: create person without face recognition
+          createdPerson = await personService.createPerson(personData);
+          Alert.alert('Warning', 'Person created but face recognition setup failed. You can add photos later.');
         } finally {
           setIsUploadingImages(false);
         }
+      } else {
+        // No images selected, create person normally
+        createdPerson = await personService.createPerson(personData);
       }
       
       // Link person to home
@@ -175,11 +194,16 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
       
       await homePersonService.linkPersonToHome(homePersonRequest);
       
-      Alert.alert('Success', 'Person added successfully!');
+      const successMessage = selectedImages.length > 0 
+        ? 'Person added successfully with face recognition!'
+        : 'Person added successfully!';
+      
+      Alert.alert('Success', successMessage);
       setShowAddPersonModal(false);
       clearPersonForm();
       loadPeople();
     } catch (err) {
+      console.error('Error adding person:', err);
       Alert.alert('Error', 'Failed to add person');
     } finally {
       setIsAddingPerson(false);
@@ -199,12 +223,12 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
   const handleRemovePerson = async (personId: string, personName: string) => {
     Alert.alert(
       'Remove Person',
-      `Are you sure you want to remove ${personName} from this home?`,
+      `What would you like to do with ${personName}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Remove', 
-          style: 'destructive',
+          text: 'Remove from Home Only', 
+          style: 'default',
           onPress: async () => {
             try {
               // Find the home-person relationship
@@ -212,9 +236,30 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
               if (homePerson) {
                 await homePersonService.removePersonFromHome(homePerson.id);
                 loadPeople();
+                Alert.alert('Success', `${personName} has been removed from this home`);
               }
             } catch (err) {
-              Alert.alert('Error', 'Failed to remove person');
+              Alert.alert('Error', 'Failed to remove person from home');
+            }
+          }
+        },
+        { 
+          text: 'Delete Person Completely', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // First remove from home
+              const homePerson = people.find(p => p.personId === personId);
+              if (homePerson) {
+                await homePersonService.removePersonFromHome(homePerson.id);
+              }
+              
+              // Then delete the person completely
+              await personService.deletePerson(personId);
+              loadPeople();
+              Alert.alert('Success', `${personName} has been completely deleted`);
+            } catch (err) {
+              Alert.alert('Error', 'Failed to delete person');
             }
           }
         }
@@ -225,9 +270,12 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
   const getPersonTypeColor = (type: string) => {
     switch (type) {
       case 'FAMILY_MEMBER': return '#4CAF50';
-      case 'GUEST': return '#2196F3';
-      case 'SERVICE_PROVIDER': return '#FF9800';
-      case 'EMERGENCY_CONTACT': return '#F44336';
+      case 'REGULAR_GUEST': return '#2196F3';
+      case 'SERVICE_WORKER': return '#FF9800';
+      case 'DELIVERY_PERSON': return '#FF5722';
+      case 'MAINTENANCE': return '#9C27B0';
+      case 'VISITOR': return '#607D8B';
+      case 'UNKNOWN': return '#9E9E9E';
       default: return '#9E9E9E';
     }
   };
@@ -268,7 +316,7 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
       setSelectedPerson(prev => prev ? {
         ...prev,
         person: {
-          ...prev.person,
+          ...prev.person!,
           profileImagePath: photoUrl
         }
       } : null);
@@ -313,7 +361,9 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
-        quality: 0.8,
+        quality: 1.0, // No compression for better face detection
+        allowsEditing: false, // Don't force editing/cropping
+        exif: true, // Preserve EXIF data for proper orientation
       });
 
       if (!result.canceled && result.assets) {
@@ -370,14 +420,14 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
       
       // If this was the profile picture, clear it
       if (selectedPerson.person.profileImagePath === photoUrl) {
-        await personService.updatePerson(selectedPerson.person.id, { profileImagePath: null });
+        await personService.updatePerson(selectedPerson.person.id, { profileImagePath: undefined });
         
         // Update the selected person state
         setSelectedPerson(prev => prev ? {
           ...prev,
           person: {
-            ...prev.person,
-            profileImagePath: null
+            ...prev.person!,
+            profileImagePath: undefined
           }
         } : null);
         
@@ -626,9 +676,12 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
               <View className="flex-row flex-wrap gap-3">
                 {[
                   { value: 'FAMILY_MEMBER', label: 'Family Member', icon: 'people' },
-                  { value: 'GUEST', label: 'Guest', icon: 'person' },
-                  { value: 'SERVICE_PROVIDER', label: 'Service Provider', icon: 'construct' },
-                  { value: 'EMERGENCY_CONTACT', label: 'Emergency Contact', icon: 'warning' },
+                  { value: 'REGULAR_GUEST', label: 'Regular Guest', icon: 'person' },
+                  { value: 'SERVICE_WORKER', label: 'Service Worker', icon: 'construct' },
+                  { value: 'DELIVERY_PERSON', label: 'Delivery Person', icon: 'car' },
+                  { value: 'MAINTENANCE', label: 'Maintenance', icon: 'settings' },
+                  { value: 'VISITOR', label: 'Visitor', icon: 'walk' },
+                  { value: 'UNKNOWN', label: 'Unknown', icon: 'help' },
                 ].map((type) => (
                   <TouchableOpacity
                     key={type.value}
@@ -658,8 +711,14 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
 
             {/* Images */}
             <View className={`p-4 rounded-xl mb-4 ${isDark ? 'bg-neutral-800' : 'bg-white'} border ${isDark ? 'border-neutral-700' : 'border-neutral-200'}`}>
-              <Text className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+              <Text className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
                 Photos (Optional)
+              </Text>
+              <Text className={`text-sm mb-4 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                {selectedImages.length > 0 
+                  ? `✨ ${selectedImages.length} photos selected - Face recognition will be automatically set up!`
+                  : 'Add photos to enable automatic face recognition for this person'
+                }
               </Text>
               
               <View className="flex-row gap-3 mb-4">
@@ -703,8 +762,16 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
               <View className={`p-6 rounded-xl ${isDark ? 'bg-neutral-800' : 'bg-white'}`}>
                 <ActivityIndicator size="large" color={isDark ? '#ffffff' : '#000000'} />
                 <Text className={`mt-4 text-center ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-                  {isUploadingImages ? 'Uploading images...' : 'Adding person...'}
+                  {isUploadingImages 
+                    ? 'Setting up face recognition...' 
+                    : 'Adding person...'
+                  }
                 </Text>
+                {isUploadingImages && (
+                  <Text className={`mt-2 text-center text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                    Uploading images and generating face embeddings
+                  </Text>
+                )}
               </View>
             </View>
           )}
@@ -788,23 +855,8 @@ const ManagePeopleScreen: React.FC<ManagePeopleScreenProps> = ({ navigation, rou
                   Information
                 </Text>
                 
-                {selectedPerson.person?.phone && (
-                  <View className="flex-row items-center mb-3">
-                    <Ionicons name="call-outline" size={20} color={isDark ? '#9ca3af' : '#6b7280'} />
-                    <Text className={`ml-3 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-                      {selectedPerson.person.phone}
-                    </Text>
-                  </View>
-                )}
-                
-                {selectedPerson.person?.email && (
-                  <View className="flex-row items-center mb-3">
-                    <Ionicons name="mail-outline" size={20} color={isDark ? '#9ca3af' : '#6b7280'} />
-                    <Text className={`ml-3 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-                      {selectedPerson.person.email}
-                    </Text>
-                  </View>
-                )}
+                {/* Note: Phone and email are not available in HomePersonResponse.person object */}
+                {/* These would need to be fetched separately if needed */}
                 
                 <View className="flex-row items-center mb-3">
                   <Ionicons name="shield-outline" size={20} color={isDark ? '#9ca3af' : '#6b7280'} />

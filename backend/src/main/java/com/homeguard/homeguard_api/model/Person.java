@@ -43,6 +43,18 @@ public class Person extends BaseEntity {
     @Column(name = "face_vector", columnDefinition = "TEXT")
     private String faceVector; // JSON array of ML face embedding
 
+    @Column(name = "face_embeddings_generated_at")
+    private java.time.LocalDateTime faceEmbeddingsGeneratedAt;
+
+    @Column(name = "face_image_count")
+    private Integer faceImageCount = 0;
+
+    @Column(name = "face_processing_status")
+    private String faceProcessingStatus = "PENDING";
+
+    @Column(name = "face_processing_error", columnDefinition = "TEXT")
+    private String faceProcessingError;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
@@ -55,4 +67,7 @@ public class Person extends BaseEntity {
 
     @OneToMany(mappedBy = "person", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
     private java.util.List<RFIDCard> rfidCards;
+
+    @OneToMany(mappedBy = "person", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
+    private java.util.List<HomePerson> homePersons;
 }

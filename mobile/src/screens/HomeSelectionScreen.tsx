@@ -9,7 +9,8 @@ import {
   Dimensions,
   Modal,
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
+  AppState
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { Home } from '../types/Home';
 import { homeService, HomeResponse } from '../services/HomeService';
+import { homeActivityService, HomeActivity } from '../services/HomeActivityService';
 
 interface HomeSelectionScreenProps {
   navigation: any;
@@ -39,18 +41,13 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
   const HOMES_PER_PAGE = 3;
   const [displayedHomes, setDisplayedHomes] = useState<Home[]>([]);
 
-  // Global Activity and Queued Requests
-  interface GlobalActivity {
-    id: string;
-    timestamp: string;
-    type: 'door_request' | 'face_detection' | 'rfid_scan' | 'system_alert' | 'device_offline';
-    title: string;
-    description: string;
-    homeName: string;
-    status: 'pending' | 'approved' | 'denied' | 'completed';
-    priority: 'low' | 'medium' | 'high' | 'urgent';
-  }
+  // State for activities data
+  const [globalActivities, setGlobalActivities] = useState<HomeActivity[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(false);
+  const [activitiesError, setActivitiesError] = useState<string | null>(null);
+  const [lastActivityFetch, setLastActivityFetch] = useState<number>(0);
 
+  // Queued Requests (keeping mock data for now as this might be a different service)
   interface QueuedRequest {
     id: string;
     timestamp: string;
@@ -61,39 +58,6 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
     message?: string;
     status: 'pending' | 'approved' | 'denied';
   }
-
-  const [globalActivities] = useState<GlobalActivity[]>([
-    {
-      id: '1',
-      timestamp: '2 minutes ago',
-      type: 'door_request',
-      title: 'Door Access Request',
-      description: 'John Doe requesting access at Main Residence front door',
-      homeName: 'Main Residence',
-      status: 'pending',
-      priority: 'high'
-    },
-    {
-      id: '2',
-      timestamp: '5 minutes ago',
-      type: 'face_detection',
-      title: 'Face Recognition',
-      description: 'Unknown person detected at Beach House',
-      homeName: 'Beach House',
-      status: 'pending',
-      priority: 'medium'
-    },
-    {
-      id: '3',
-      timestamp: '10 minutes ago',
-      type: 'device_offline',
-      title: 'Device Offline',
-      description: 'Garage door sensor offline at Mountain Cabin',
-      homeName: 'Mountain Cabin',
-      status: 'completed',
-      priority: 'low'
-    }
-  ]);
 
   const [queuedRequests] = useState<QueuedRequest[]>([
     {
@@ -130,6 +94,8 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
 
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showRequestsModal, setShowRequestsModal] = useState(false);
+  const [showActivityDetailModal, setShowActivityDetailModal] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<HomeActivity | null>(null);
   const [expandedActivity, setExpandedActivity] = useState<string | null>(null);
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
 
@@ -179,10 +145,78 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
     }
   }, [user?.id, convertApiResponseToHome]);
 
+  // Load activities for all homes
+  const loadActivities = useCallback(async (forceRefresh = false) => {
+    if (!user?.id || homes.length === 0) return;
+    
+    // Throttle API calls - only fetch if it's been more than 10 seconds since last fetch
+    const now = Date.now();
+    if (!forceRefresh && now - lastActivityFetch < 10000) {
+      return;
+    }
+    
+    try {
+      setLoadingActivities(true);
+      setActivitiesError(null);
+      
+      // Get home IDs from the loaded homes
+      const homeIds = homes.map(home => home.id);
+      const activities = await homeActivityService.getGlobalRecentActivities(homeIds, 24);
+      setGlobalActivities(activities);
+      setLastActivityFetch(now);
+    } catch (err) {
+      console.error('Error loading activities:', err);
+      setActivitiesError('Failed to load activities');
+    } finally {
+      setLoadingActivities(false);
+    }
+  }, [user?.id, homes, lastActivityFetch]);
+
   // Load homes on component mount
   useEffect(() => {
     loadHomes();
   }, [loadHomes]);
+
+  // Load activities after homes are loaded
+  useEffect(() => {
+    if (homes.length > 0) {
+      loadActivities();
+    }
+  }, [homes, loadActivities]);
+
+  // Auto-refresh activities every 30 seconds
+  useEffect(() => {
+    if (homes.length === 0) return;
+
+    const interval = setInterval(() => {
+      loadActivities(true); // Force refresh
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [homes, loadActivities]);
+
+  // Refresh activities when app comes to foreground
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active' && homes.length > 0) {
+        loadActivities(true); // Force refresh
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [homes, loadActivities]);
+
+  // Refresh activities when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (homes.length > 0) {
+        loadActivities(true); // Force refresh
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, homes, loadActivities]);
 
   // Handle "See More" functionality
   const handleSeeMore = useCallback(() => {
@@ -210,6 +244,33 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
     navigation.navigate('SecuritySettings', { home });
   };
 
+  const handleViewAllActivities = () => {
+    // Navigate to the global activities screen that shows activities from all homes
+    navigation.navigate('GlobalActivities');
+  };
+
+  const handleActivityClick = async (activity: HomeActivity) => {
+    if (!user?.id) return;
+    
+    try {
+      // If the activity is not acknowledged, acknowledge it first
+      if (!activity.isAcknowledged) {
+        await homeActivityService.acknowledgeActivity(activity.id, user.id);
+        // Refresh activities to show updated status
+        loadActivities();
+      }
+      
+      // Show activity detail modal
+      setSelectedActivity(activity);
+      setShowActivityDetailModal(true);
+    } catch (error) {
+      console.error('Error acknowledging activity:', error);
+      // Still show modal even if acknowledgment fails
+      setSelectedActivity(activity);
+      setShowActivityDetailModal(true);
+    }
+  };
+
   const handleRequestAction = (requestId: string, action: 'approve' | 'deny') => {
     Alert.alert(
       action === 'approve' ? 'Approve Request' : 'Deny Request',
@@ -228,7 +289,9 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
     );
   };
 
-  const handleActivityAction = (activityId: string, action: 'acknowledge' | 'dismiss' | 'investigate') => {
+  const handleActivityAction = async (activityId: string, action: 'acknowledge' | 'dismiss' | 'investigate') => {
+    if (!user?.id) return;
+    
     const actionText = action === 'acknowledge' ? 'acknowledge' : 
                      action === 'dismiss' ? 'dismiss' : 'investigate';
     
@@ -240,8 +303,22 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
         { 
           text: actionText.charAt(0).toUpperCase() + actionText.slice(1), 
           style: 'default',
-          onPress: () => {
-            Alert.alert('Success', `Activity ${actionText}d successfully`);
+          onPress: async () => {
+            try {
+              if (action === 'acknowledge') {
+                await homeActivityService.acknowledgeActivity(activityId, user.id);
+                // Refresh activities
+                loadActivities();
+              } else if (action === 'investigate') {
+                // For now, just show success - could navigate to investigation screen
+                Alert.alert('Success', 'Activity marked for investigation');
+              } else if (action === 'dismiss') {
+                // For now, just show success - could implement dismiss functionality
+                Alert.alert('Success', 'Activity dismissed');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to update activity');
+            }
           }
         }
       ]
@@ -257,28 +334,51 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
   };
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return isDark ? '#ef4444' : '#dc2626';
-      case 'high': return isDark ? '#f59e0b' : '#d97706';
-      case 'medium': return isDark ? '#3b82f6' : '#2563eb';
-      case 'low': return isDark ? '#10b981' : '#059669';
+    switch (priority.toUpperCase()) {
+      case 'CRITICAL': return isDark ? '#ef4444' : '#dc2626';
+      case 'HIGH': return isDark ? '#f59e0b' : '#d97706';
+      case 'MEDIUM': return isDark ? '#3b82f6' : '#2563eb';
+      case 'LOW': return isDark ? '#10b981' : '#059669';
       default: return isDark ? '#6b7280' : '#6b7280';
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
+  const getTypeIcon = (activityType: string) => {
+    switch (activityType.toLowerCase()) {
+      case 'door_access':
       case 'door_request': return 'key';
-      case 'face_detection': return 'person';
-      case 'rfid_scan': return 'card';
-      case 'system_alert': return 'warning';
-      case 'device_offline': return 'hardware-chip';
+      case 'face_detection':
+      case 'face_recognition': return 'person';
+      case 'rfid_scan':
+      case 'rfid_access': return 'card';
+      case 'system_alert':
+      case 'security_alert': return 'warning';
+      case 'device_offline':
+      case 'device_status': return 'hardware-chip';
+      case 'motion_detected': return 'eye';
       case 'door_open': return 'lock-open';
       case 'call': return 'call';
       case 'emergency': return 'alert-circle';
       case 'maintenance': return 'construct';
       default: return 'information-circle';
     }
+  };
+
+  const getActivityStatus = (activity: HomeActivity) => {
+    if (activity.isResolved) return 'completed';
+    if (activity.isAcknowledged) return 'approved';
+    return 'pending';
+  };
+
+  const formatActivityTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} hour${Math.floor(diffInMinutes / 60) > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffInMinutes / 1440)} day${Math.floor(diffInMinutes / 1440) > 1 ? 's' : ''} ago`;
   };
 
 
@@ -433,7 +533,7 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
               className={`flex-1 p-4 rounded-xl mr-2 ${
                 isDark ? 'bg-neutral-800' : 'bg-white'
               }`}
-              onPress={() => setShowActivityModal(true)}
+              onPress={() => handleViewAllActivities()}
             >
               <Ionicons 
                 name="pulse" 
@@ -444,7 +544,7 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
                 Global Activity
               </Text>
               <Text className={`text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                {globalActivities.length} events
+                {loadingActivities ? '...' : `${globalActivities.filter(activity => !activity.isAcknowledged).length} new events`}
               </Text>
             </TouchableOpacity>
             
@@ -512,125 +612,101 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
         {/* Recent Activity Summary */}
         <View className="mb-6">
           <View className="flex-row justify-between items-center mb-4">
-            <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-              Recent Activity
-            </Text>
-            <TouchableOpacity onPress={() => setShowActivityModal(true)}>
+            <View className="flex-row items-center">
+              <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                Recent Activity
+              </Text>
+              {!loadingActivities && globalActivities.filter(activity => !activity.isAcknowledged).length > 0 && (
+                <View className={`ml-2 px-2 py-1 rounded-full ${
+                  isDark ? 'bg-red-600' : 'bg-red-500'
+                }`}>
+                  <Text className="text-white text-xs font-semibold">
+                    {globalActivities.filter(activity => !activity.isAcknowledged).length}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity onPress={() => handleViewAllActivities()}>
               <Text className={`text-sm ${isDark ? 'text-primary-400' : 'text-primary-600'}`}>
                 View All
               </Text>
             </TouchableOpacity>
           </View>
           
-          {globalActivities.slice(0, 2).map(activity => (
-            <View key={activity.id} className={`p-4 rounded-xl mb-3 ${
-              isDark ? 'bg-neutral-800' : 'bg-white'
-            }`}>
-              <TouchableOpacity 
-                onPress={() => toggleActivityExpansion(activity.id)}
-                className="flex-row items-start"
-              >
-                <View className={`w-8 h-8 rounded-full items-center justify-center mr-3`} 
-                      style={{ backgroundColor: getPriorityColor(activity.priority) }}>
-                  <Ionicons 
-                    name={getTypeIcon(activity.type) as any} 
-                    size={16} 
-                    color="white" 
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-                    {activity.title}
-                  </Text>
-                  <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                    {activity.description}
-                  </Text>
-                  <Text className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-                    {activity.homeName} • {activity.timestamp}
-                  </Text>
-                </View>
-                <View className="flex-row items-center">
-                  <View className={`px-2 py-1 rounded-full mr-2 ${
-                    activity.status === 'pending' 
-                      ? (isDark ? 'bg-yellow-600' : 'bg-yellow-500')
-                      : activity.status === 'completed'
-                      ? (isDark ? 'bg-green-600' : 'bg-green-500')
-                      : (isDark ? 'bg-neutral-600' : 'bg-neutral-300')
-                  }`}>
-                    <Text className="text-xs font-medium text-white">
-                      {activity.status}
-                    </Text>
-                  </View>
-                  <Ionicons 
-                    name={expandedActivity === activity.id ? "chevron-up" : "chevron-down"} 
-                    size={16} 
-                    color={isDark ? '#a3a3a3' : '#737373'} 
-                  />
-                </View>
-              </TouchableOpacity>
-              
-              {/* Expanded Activity Actions */}
-              {expandedActivity === activity.id && (
-                <View className="mt-4 pt-4 border-t border-neutral-600">
-                  <View className="flex-row justify-between mb-3">
-                    <Text className={`text-sm font-medium ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-                      Actions
-                    </Text>
-                    <Text className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-                      Priority: {activity.priority}
-                    </Text>
-                  </View>
-                  
-                  <View>
-                    <TouchableOpacity 
-                      className={`w-full py-4 px-6 rounded-2xl mb-4 ${
-                        isDark ? 'bg-blue-600' : 'bg-blue-500'
-                      }`}
-                      onPress={() => handleActivityAction(activity.id, 'acknowledge')}
-                      style={{ shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 }}
-                    >
-                      <View className="flex-row items-center justify-center">
-                        <Ionicons name="checkmark-circle" size={20} color="white" />
-                        <Text className="text-white text-base font-semibold ml-3">
-                          Acknowledge
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      className={`w-full py-4 px-6 rounded-2xl mb-4 ${
-                        isDark ? 'bg-orange-600' : 'bg-orange-500'
-                      }`}
-                      onPress={() => handleActivityAction(activity.id, 'investigate')}
-                      style={{ shadowColor: '#f59e0b', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 }}
-                    >
-                      <View className="flex-row items-center justify-center">
-                        <Ionicons name="search" size={20} color="white" />
-                        <Text className="text-white text-base font-semibold ml-3">
-                          Investigate
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      className={`w-full py-4 px-6 rounded-2xl ${
-                        isDark ? 'bg-neutral-600' : 'bg-neutral-500'
-                      }`}
-                      onPress={() => handleActivityAction(activity.id, 'dismiss')}
-                      style={{ shadowColor: '#6b7280', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 }}
-                    >
-                      <View className="flex-row items-center justify-center">
-                        <Ionicons name="close-circle" size={20} color="white" />
-                        <Text className="text-white text-base font-semibold ml-3">
-                          Dismiss
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
+          {loadingActivities ? (
+            <View className="items-center py-4">
+              <ActivityIndicator 
+                size="small" 
+                color={isDark ? '#3b82f6' : '#2563eb'} 
+              />
+              <Text className={`text-sm mt-2 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                Loading activities...
+              </Text>
             </View>
-          ))}
+          ) : activitiesError ? (
+            <View className="items-center py-4">
+              <Ionicons 
+                name="alert-circle" 
+                size={24} 
+                color={isDark ? '#ef4444' : '#dc2626'} 
+              />
+              <Text className={`text-sm mt-2 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                {activitiesError}
+              </Text>
+            </View>
+          ) : globalActivities.length === 0 ? (
+            <View className="items-center py-4">
+              <Ionicons 
+                name="checkmark-circle" 
+                size={24} 
+                color={isDark ? '#10b981' : '#059669'} 
+              />
+              <Text className={`text-sm mt-2 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                No recent activities
+              </Text>
+            </View>
+          ) : (
+            globalActivities.slice(0, 2).map(activity => {
+              const home = homes.find(h => h.id === activity.homeId);
+              const homeName = home?.name || 'Unknown Home';
+              
+              return (
+                <View key={activity.id} className={`p-4 rounded-xl mb-3 ${
+                  isDark ? 'bg-neutral-800' : 'bg-white'
+                }`}>
+                  <TouchableOpacity 
+                    onPress={() => handleActivityClick(activity)}
+                    className="flex-row items-start"
+                  >
+                    <View className={`w-8 h-8 rounded-full items-center justify-center mr-3`} 
+                          style={{ backgroundColor: getPriorityColor(activity.priority) }}>
+                      <Ionicons 
+                        name={getTypeIcon(activity.activityType) as any} 
+                        size={16} 
+                        color="white" 
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                        {activity.title}
+                      </Text>
+                      <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        {activity.description || activity.activityType.replace('_', ' ')}
+                      </Text>
+                      <Text className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                        {homeName} • {formatActivityTimestamp(activity.activityTimestamp)}
+                      </Text>
+                    </View>
+                    <View className="relative">
+                      {!activity.isAcknowledged && (
+                        <View className="w-2.5 h-2.5 bg-red-500 rounded-full" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              );
+            })
+          )}
         </View>
 
         {/* Queued Requests Summary */}
@@ -914,115 +990,46 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
             </View>
             
             <ScrollView showsVerticalScrollIndicator={false}>
-              {globalActivities.map(activity => (
-                <View key={activity.id} className={`p-4 rounded-xl mb-3 ${
-                  isDark ? 'bg-neutral-700' : 'bg-neutral-100'
-                }`}>
-                  <TouchableOpacity 
-                    onPress={() => toggleActivityExpansion(activity.id)}
-                    className="flex-row items-start"
-                  >
-                    <View className={`w-8 h-8 rounded-full items-center justify-center mr-3`} 
-                          style={{ backgroundColor: getPriorityColor(activity.priority) }}>
-                      <Ionicons 
-                        name={getTypeIcon(activity.type) as any} 
-                        size={16} 
-                        color="white" 
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
-                        {activity.title}
-                      </Text>
-                      <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                        {activity.description}
-                      </Text>
-                      <Text className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-                        {activity.homeName} • {activity.timestamp}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center">
-                      <View className={`px-2 py-1 rounded-full mr-2 ${
-                        activity.status === 'pending' 
-                          ? (isDark ? 'bg-yellow-600' : 'bg-yellow-500')
-                          : activity.status === 'completed'
-                          ? (isDark ? 'bg-green-600' : 'bg-green-500')
-                          : (isDark ? 'bg-neutral-600' : 'bg-neutral-300')
-                      }`}>
-                        <Text className="text-xs font-medium text-white">
-                          {activity.status}
-                        </Text>
+              {globalActivities.map(activity => {
+                const home = homes.find(h => h.id === activity.homeId);
+                const homeName = home?.name || 'Unknown Home';
+                
+                return (
+                  <View key={activity.id} className={`p-4 rounded-xl mb-3 ${
+                    isDark ? 'bg-neutral-700' : 'bg-neutral-100'
+                  }`}>
+                    <TouchableOpacity 
+                      onPress={() => handleActivityClick(activity)}
+                      className="flex-row items-start"
+                    >
+                      <View className={`w-8 h-8 rounded-full items-center justify-center mr-3`} 
+                            style={{ backgroundColor: getPriorityColor(activity.priority) }}>
+                        <Ionicons 
+                          name={getTypeIcon(activity.activityType) as any} 
+                          size={16} 
+                          color="white" 
+                        />
                       </View>
-                      <Ionicons 
-                        name={expandedActivity === activity.id ? "chevron-up" : "chevron-down"} 
-                        size={16} 
-                        color={isDark ? '#a3a3a3' : '#737373'} 
-                      />
-                    </View>
-                  </TouchableOpacity>
-                  
-                  {/* Expanded Activity Actions in Modal */}
-                  {expandedActivity === activity.id && (
-                    <View className="mt-4 pt-4 border-t border-neutral-600">
-                      <View className="flex-row justify-between mb-3">
-                        <Text className={`text-sm font-medium ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
-                          Actions
+                      <View className="flex-1">
+                        <Text className={`font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                          {activity.title}
+                        </Text>
+                        <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                          {activity.description || activity.activityType.replace('_', ' ')}
                         </Text>
                         <Text className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
-                          Priority: {activity.priority}
+                          {homeName} • {formatActivityTimestamp(activity.activityTimestamp)}
                         </Text>
                       </View>
-                      
-                      <View>
-                        <TouchableOpacity 
-                          className={`w-full py-4 px-6 rounded-2xl mb-4 ${
-                            isDark ? 'bg-blue-600' : 'bg-blue-500'
-                          }`}
-                          onPress={() => handleActivityAction(activity.id, 'acknowledge')}
-                          style={{ shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 }}
-                        >
-                          <View className="flex-row items-center justify-center">
-                            <Ionicons name="checkmark-circle" size={20} color="white" />
-                            <Text className="text-white text-base font-semibold ml-3">
-                              Acknowledge
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                          className={`w-full py-4 px-6 rounded-2xl mb-4 ${
-                            isDark ? 'bg-orange-600' : 'bg-orange-500'
-                          }`}
-                          onPress={() => handleActivityAction(activity.id, 'investigate')}
-                          style={{ shadowColor: '#f59e0b', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 }}
-                        >
-                          <View className="flex-row items-center justify-center">
-                            <Ionicons name="search" size={20} color="white" />
-                            <Text className="text-white text-base font-semibold ml-3">
-                              Investigate
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                          className={`w-full py-4 px-6 rounded-2xl ${
-                            isDark ? 'bg-neutral-600' : 'bg-neutral-500'
-                          }`}
-                          onPress={() => handleActivityAction(activity.id, 'dismiss')}
-                          style={{ shadowColor: '#6b7280', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 }}
-                        >
-                          <View className="flex-row items-center justify-center">
-                            <Ionicons name="close-circle" size={20} color="white" />
-                            <Text className="text-white text-base font-semibold ml-3">
-                              Dismiss
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
+                      <View className="relative">
+                        {!activity.isAcknowledged && (
+                          <View className="w-2.5 h-2.5 bg-red-500 rounded-full" />
+                        )}
                       </View>
-                    </View>
-                  )}
+                    </TouchableOpacity>
                 </View>
-              ))}
+              );
+            })}
             </ScrollView>
           </View>
         </View>
@@ -1162,6 +1169,162 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
                 </View>
               ))}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Activity Detail Modal */}
+      <Modal
+        visible={showActivityDetailModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowActivityDetailModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <View className={`rounded-t-3xl ${isDark ? 'bg-neutral-800' : 'bg-white'} p-6 max-h-96`}>
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className={`text-xl font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                Activity Details
+              </Text>
+              <TouchableOpacity onPress={() => setShowActivityDetailModal(false)}>
+                <Ionicons name="close" size={24} color={isDark ? '#ffffff' : '#000000'} />
+              </TouchableOpacity>
+            </View>
+            
+            {selectedActivity && (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View className={`p-4 rounded-xl mb-4 ${
+                  isDark ? 'bg-neutral-700' : 'bg-neutral-100'
+                }`}>
+                  <View className="flex-row items-start mb-4">
+                    <View className={`w-12 h-12 rounded-full items-center justify-center mr-4`} 
+                          style={{ backgroundColor: getPriorityColor(selectedActivity.priority) }}>
+                      <Ionicons 
+                        name={getTypeIcon(selectedActivity.activityType) as any} 
+                        size={24} 
+                        color="white" 
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                        {selectedActivity.title}
+                      </Text>
+                      <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        {selectedActivity.activityType.replace('_', ' ').toUpperCase()}
+                      </Text>
+                    </View>
+                    <View className={`px-3 py-1 rounded-full ${
+                      selectedActivity.priority === 'CRITICAL' 
+                        ? (isDark ? 'bg-red-600' : 'bg-red-500')
+                        : selectedActivity.priority === 'HIGH'
+                        ? (isDark ? 'bg-orange-600' : 'bg-orange-500')
+                        : selectedActivity.priority === 'MEDIUM'
+                        ? (isDark ? 'bg-blue-600' : 'bg-blue-500')
+                        : (isDark ? 'bg-green-600' : 'bg-green-500')
+                    }`}>
+                      <Text className="text-white text-xs font-semibold">
+                        {selectedActivity.priority}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {selectedActivity.description && (
+                    <View className="mb-4">
+                      <Text className={`text-sm font-semibold mb-2 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                        Description
+                      </Text>
+                      <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        {selectedActivity.description}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View className="mb-4">
+                    <Text className={`text-sm font-semibold mb-2 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                      Home
+                    </Text>
+                    <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                      {homes.find(h => h.id === selectedActivity.homeId)?.name || 'Unknown Home'}
+                    </Text>
+                  </View>
+
+                  <View className="mb-4">
+                    <Text className={`text-sm font-semibold mb-2 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                      Timestamp
+                    </Text>
+                    <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                      {formatActivityTimestamp(selectedActivity.activityTimestamp)}
+                    </Text>
+                    <Text className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                      {new Date(selectedActivity.activityTimestamp).toLocaleString()}
+                    </Text>
+                  </View>
+
+                  <View className="mb-4">
+                    <Text className={`text-sm font-semibold mb-2 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                      Status
+                    </Text>
+                    <View className="flex-row items-center">
+                      <View className={`w-3 h-3 rounded-full mr-2 ${
+                        selectedActivity.isAcknowledged ? 'bg-green-500' : 'bg-red-500'
+                      }`} />
+                      <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        {selectedActivity.isAcknowledged ? 'Acknowledged' : 'Unacknowledged'}
+                      </Text>
+                    </View>
+                    {selectedActivity.isResolved && (
+                      <View className="flex-row items-center mt-1">
+                        <View className="w-3 h-3 rounded-full mr-2 bg-blue-500" />
+                        <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                          Resolved
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {selectedActivity.additionalData && (
+                    <View className="mb-4">
+                      <Text className={`text-sm font-semibold mb-2 ${isDark ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                        Additional Information
+                      </Text>
+                      <Text className={`text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        {selectedActivity.additionalData}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View className="flex-row justify-between mt-6">
+                    <TouchableOpacity 
+                      className={`flex-1 py-3 px-4 rounded-xl mr-2 ${
+                        isDark ? 'bg-neutral-600' : 'bg-neutral-200'
+                      }`}
+                      onPress={() => {
+                        const home = homes.find(h => h.id === selectedActivity.homeId);
+                        if (home) {
+                          setShowActivityDetailModal(false);
+                          navigation.navigate('RecentActivities', { home });
+                        }
+                      }}
+                    >
+                      <Text className={`text-center font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                        View All Activities
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      className={`flex-1 py-3 px-4 rounded-xl ml-2 ${
+                        isDark ? 'bg-primary-600' : 'bg-primary-500'
+                      }`}
+                      onPress={() => setShowActivityDetailModal(false)}
+                    >
+                      <Text className="text-center font-semibold text-white">
+                        Close
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>

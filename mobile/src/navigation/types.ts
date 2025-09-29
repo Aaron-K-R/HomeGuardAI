@@ -22,6 +22,7 @@ export type MainStackParamList = {
   MemberManagement: { home: any }; // Manage specific home members (invite users, add people)
   ManagePeople: { home: any }; // Manage people for a specific home
   RecentActivities: { home: any }; // Recent activities for a specific home
+  GlobalActivities: undefined; // Global activities from all homes
   // Device Management
   DeviceManagement: { home: any };
   // Security Controls

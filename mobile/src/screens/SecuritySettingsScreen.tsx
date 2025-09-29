@@ -335,7 +335,7 @@ const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ navigat
 
       <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
         {/* Security Level */}
-        <ArmModeSelector />
+       {/* <ArmModeSelector /> */}
 
         {/* Security Features */}
         <View className="mb-6">
