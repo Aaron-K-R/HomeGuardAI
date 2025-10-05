@@ -54,9 +54,9 @@ public class SecuritySettings extends BaseEntity {
      * @NotNull ensures the relationship is always established
      */
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "home_id", nullable = false)
     @NotNull
-    private User user;
+    private Home home;
 
     /**
      * Motion detection sensor enable/disable preference

@@ -60,19 +60,16 @@
     
     "_comment_icons": "Expo Vector Icons: Comprehensive icon library for UI elements",
     "@expo/vector-icons": "^15.0.2",
-    
-    "_comment_navigation": "React Navigation: Navigation library for React Native",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.7",
     "@react-navigation/native": "^7.1.17",
     "@react-navigation/stack": "^7.4.8",
-    
-    "_comment_expo": "Expo SDK: Development platform and build tools",
+    "@supabase/supabase-js": "^2.58.0",
     "expo": "~54.0.10",
     
     "_comment_camera": "Expo Camera: Camera integration for security monitoring",
     "expo-camera": "^17.0.8",
-    
-    "_comment_location": "Expo Location: Location services for geofencing",
+    "expo-image-picker": "^17.0.8",
     "expo-location": "^19.0.7",
     
     "_comment_notifications": "Expo Notifications: Push notifications for security alerts",
@@ -80,25 +77,21 @@
     
     "_comment_status_bar": "Expo Status Bar: Status bar styling and management",
     "expo-status-bar": "~3.0.8",
-    
-    "_comment_react": "React: JavaScript library for building user interfaces",
+    "nativewind": "^4.2.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     
     "_comment_react_native": "React Native: Cross-platform mobile development framework",
     "react-native": "0.81.4",
-    
-    "_comment_gestures": "React Native Gesture Handler: Touch gesture management",
+    "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "^2.28.0",
-    
-    "_comment_safe_area": "React Native Safe Area Context: Safe area handling",
-    "react-native-safe-area-context": "^5.6.1",
-    
-    "_comment_screens": "React Native Screens: Native screen management",
+    "react-native-reanimated": "~3.17.4",
+    "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "^4.16.0",
-    
-    "_comment_web": "React Native Web: Web platform support",
-    "react-native-web": "^0.21.0"
+    "react-native-web": "^0.21.0",
+    "react-native-worklets": "^0.6.0",
+    "react-native-worklets-core": "^1.6.2",
+    "tailwindcss": "^3.4.17"
   },
   
   "devDependencies": {
@@ -106,8 +99,9 @@
     
     "_comment_types": "React Types: TypeScript definitions for React",
     "@types/react": "~19.1.0",
-    
-    "_comment_typescript": "TypeScript: Type-safe JavaScript development",
+    "@types/react-native": "^0.72.8",
+    "babel-preset-expo": "~54.0.0",
+    "prettier-plugin-tailwindcss": "^0.6.14",
     "typescript": "~5.9.2"
   },
   

@@ -1,14 +1,13 @@
 package com.homeguard.homeguard_api.model;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -41,8 +40,8 @@ public abstract class BaseEntity {
      * This is the most portable and efficient strategy for most databases
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", nullable = false, unique = true)
+    private String id;
 
     /**
      * Timestamp when the record was first created
@@ -50,7 +49,7 @@ public abstract class BaseEntity {
      * Uses OffsetDateTime for timezone-aware timestamps (recommended for global applications)
      */
     @Column(name = "created_at", nullable = false)
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 
     /**
      * Timestamp when the record was last updated
@@ -58,7 +57,7 @@ public abstract class BaseEntity {
      * Updated every time the entity is modified and saved
      */
     @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
     /**
      * JPA lifecycle callback that runs before the entity is persisted (saved for the first time)
@@ -67,7 +66,10 @@ public abstract class BaseEntity {
      */
     @PrePersist
     protected void onCreate() {
-        OffsetDateTime now = OffsetDateTime.now();
+        if (this.id == null || this.id.isEmpty()) {
+            this.id = UUID.randomUUID().toString();
+        }
+        LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -79,7 +81,7 @@ public abstract class BaseEntity {
      */
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = OffsetDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }
 
