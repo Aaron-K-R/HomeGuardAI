@@ -90,7 +90,7 @@ const GlobalActivitiesScreen: React.FC<GlobalActivitiesScreenProps> = ({ navigat
       const homesData = await loadHomes();
       if (homesData.length > 0) {
         const homeIds = homesData.map(home => home.id);
-        const activities = await homeActivityService.getGlobalRecentActivities(homeIds, 24);
+        const activities = await homeActivityService.getGlobalRecentActivities(homeIds); // All activities
         setGlobalActivities(activities);
         setLastActivityFetch(now);
       }

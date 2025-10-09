@@ -161,7 +161,7 @@ const HomeSelectionScreen: React.FC<HomeSelectionScreenProps> = ({ navigation })
       
       // Get home IDs from the loaded homes
       const homeIds = homes.map(home => home.id);
-      const activities = await homeActivityService.getGlobalRecentActivities(homeIds, 24);
+      const activities = await homeActivityService.getGlobalRecentActivities(homeIds); // All activities
       setGlobalActivities(activities);
       setLastActivityFetch(now);
     } catch (err) {

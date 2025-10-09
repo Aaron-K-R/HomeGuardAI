@@ -35,11 +35,11 @@ class HomeActivityService {
   private endpoint = '/home-activities';
 
   /**
-   * Get recent activities for a home
+   * Get all activities for a home (no time limit)
    */
-  async getRecentActivities(homeId: string, hours: number = 24): Promise<HomeActivity[]> {
+  async getRecentActivities(homeId: string, hours?: number): Promise<HomeActivity[]> {
     try {
-      const response = await fetch(`${this.baseUrl}${this.endpoint}/homes/${homeId}/recent?hours=${hours}`, {
+      const response = await fetch(`${this.baseUrl}${this.endpoint}/homes/${homeId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -51,7 +51,9 @@ class HomeActivityService {
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      // Extract activities from paginated response
+      return data.content || [];
     } catch (error) {
       throw error;
     }
@@ -173,10 +175,10 @@ class HomeActivityService {
   }
 
   /**
-   * Get recent activities for all homes that a user has access to
+   * Get all activities for all homes that a user has access to
    * This method fetches activities from each home individually and combines them
    */
-  async getGlobalRecentActivities(homeIds: string[], hours: number = 24): Promise<HomeActivity[]> {
+  async getGlobalRecentActivities(homeIds: string[], hours?: number): Promise<HomeActivity[]> {
     try {
       // Fetch activities from all homes in parallel
       const activityPromises = homeIds.map(homeId => 
