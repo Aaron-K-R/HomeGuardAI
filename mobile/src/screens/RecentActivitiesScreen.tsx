@@ -48,7 +48,7 @@ const RecentActivitiesScreen: React.FC<RecentActivitiesScreenProps> = ({ navigat
       setError(null);
       
       const [activities, counts] = await Promise.all([
-        homeActivityService.getRecentActivities(home.id, 24),
+        homeActivityService.getRecentActivities(home.id), // All activities
         homeActivityService.getActivityCounts(home.id)
       ]);
       setRecentActivities(activities);
