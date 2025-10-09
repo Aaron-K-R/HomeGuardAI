@@ -3,10 +3,10 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { AuthStackParamList } from './types';
 
 // Import screens
-import LandingScreen from '../screens/LandingScreen';
-import LoginScreen from '../screens/LoginScreen';
-import SignUpScreen from '../screens/SignUpScreen';
-import TermsOfServiceScreen from '../screens/TermsOfServiceScreen';
+import LandingScreen from '../screens/authentication/LandingScreen';
+import LoginScreen from '../screens/authentication/LoginScreen';
+import SignUpScreen from '../screens/authentication/SignUpScreen';
+import TermsOfServiceScreen from '../screens/authentication/TermsOfServiceScreen';
 
 const Stack = createStackNavigator<AuthStackParamList>();
 

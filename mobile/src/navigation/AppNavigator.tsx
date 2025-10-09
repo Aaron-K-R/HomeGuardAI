@@ -6,7 +6,7 @@ import { RootStackParamList } from './types';
 // Import navigators
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
-import LoadingScreen from '../screens/LoadingScreen';
+import LoadingScreen from '../screens/common/LoadingScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 

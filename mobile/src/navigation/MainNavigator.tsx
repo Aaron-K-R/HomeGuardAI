@@ -3,20 +3,20 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { MainStackParamList } from './types';
 
 // Import screens
-import HomeSelectionScreen from '../screens/HomeSelectionScreen';
-import HomeDashboardScreen from '../screens/HomeDashboardScreen';
-import SecuritySettingsScreen from '../screens/SecuritySettingsScreen';
-import AppSettingsScreen from '../screens/AppSettingsScreen';
-import HomeListScreen from '../screens/HomeListScreen';
-import MemberManagementScreen from '../screens/MemberManagementScreen';
-import ManagePeopleScreen from '../screens/ManagePeopleScreen';
-import RecentActivitiesScreen from '../screens/RecentActivitiesScreen';
-import GlobalActivitiesScreen from '../screens/GlobalActivitiesScreen';
-import DeviceManagementScreen from '../screens/DeviceManagementScreen';
-import DeadboltControlScreen from '../screens/DeadboltControlScreen';
-import FaceDetectionScreen from '../screens/FaceDetectionScreen';
-import RFIDManagementScreen from '../screens/RFIDManagementScreen';
-import AccessLogsScreen from '../screens/AccessLogsScreen';
+import HomeSelectionScreen from '../screens/home-management/HomeSelectionScreen';
+import HomeDashboardScreen from '../screens/home-management/HomeDashboardScreen';
+import SecuritySettingsScreen from '../screens/security-access/SecuritySettingsScreen';
+import AppSettingsScreen from '../screens/settings/AppSettingsScreen';
+import HomeListScreen from '../screens/home-management/HomeListScreen';
+import MemberManagementScreen from '../screens/people-management/MemberManagementScreen';
+import ManagePeopleScreen from '../screens/people-management/ManagePeopleScreen';
+import RecentActivitiesScreen from '../screens/activities/RecentActivitiesScreen';
+import GlobalActivitiesScreen from '../screens/activities/GlobalActivitiesScreen';
+import DeviceManagementScreen from '../screens/device-management/DeviceManagementScreen';
+import DeadboltControlScreen from '../screens/security-access/DeadboltControlScreen';
+import FaceDetectionScreen from '../screens/security-access/FaceDetectionScreen';
+import RFIDManagementScreen from '../screens/security-access/RFIDManagementScreen';
+import AccessLogsScreen from '../screens/security-access/AccessLogsScreen';
 // Import other main app screens as you create them
 // import ProfileScreen from '../screens/ProfileScreen';
 // import SettingsScreen from '../screens/SettingsScreen';
