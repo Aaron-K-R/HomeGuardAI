@@ -9,7 +9,7 @@ class Config:
     """Configuration class for ML service"""
     
     # Server Configuration
-    HOST = os.getenv("ML_HOST", "192.168.254.46")
+    HOST = os.getenv("ML_HOST", "0.0.0.0")
     PORT = int(os.getenv("ML_PORT", "8001"))
     WORKERS = int(os.getenv("ML_WORKERS", "1"))
     
@@ -23,7 +23,7 @@ class Config:
     # CORS Configuration
     ALLOWED_ORIGINS = os.getenv(
         "ALLOWED_ORIGINS", 
-        "http://localhost:3000,http://localhost:8080,http://192.168.254.46:8080"
+        "http://localhost:3000,http://localhost:8080,http://localhost:8001"
     ).split(",")
     
     # API Configuration

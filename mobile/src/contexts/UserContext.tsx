@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import AuthService, { User, AuthResponse } from '../services/AuthService';
-import { appSettingsService } from '../services/AppSettingsService';
+import AuthService, { User, AuthResponse } from '../services/authentication/AuthService';
+import { appSettingsService } from '../services/settings/AppSettingsService';
 import { useTheme } from './ThemeContext';
 
 interface UserContextType {

@@ -1,2 +1,2 @@
-import { supabase } from '../services/AuthService';
+import { supabase } from '../services/authentication/AuthService';
 import { getApiConfig } from '../config/api';
