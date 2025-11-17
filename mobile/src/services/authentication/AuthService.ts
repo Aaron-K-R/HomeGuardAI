@@ -87,7 +87,6 @@ class AuthService {
   // Sign up with Supabase and create user in Spring Boot
   public async signUp(data: SignUpData): Promise<AuthResponse> {
     try {
-      
       // Step 1: Create user in Supabase
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
@@ -127,7 +126,6 @@ class AuthService {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-
 
       const springResponse = await fetch(`${SPRING_API_BASE_URL}${API_CONFIG.ENDPOINTS.USERS}`, {
         method: 'POST',

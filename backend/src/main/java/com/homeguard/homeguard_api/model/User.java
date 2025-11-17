@@ -153,15 +153,9 @@ public class User extends BaseEntity {
     @Column(name = "emergency_contact")
     private String emergencyContact;
 
-    /**
-     * One-to-One relationship with SecuritySettings
-     * Each user has exactly one security configuration
-     * Uses LAZY loading for performance (loaded only when accessed)
-     * CASCADE.ALL means security settings are deleted when user is deleted
-     * mappedBy="user" indicates SecuritySettings owns the foreign key
-     */
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.LAZY)
-    private SecuritySettings securitySettings;
+    // Note: SecuritySettings is now related to Home, not User
+    // Each home has its own security settings configuration
+    // Users access security settings through their homes
 
     /**
      * One-to-One relationship with AppSettings

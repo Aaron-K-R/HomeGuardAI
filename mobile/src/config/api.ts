@@ -1,21 +1,21 @@
 // Environment variables - these will be read from .env file by Expo
-const EXPO_PUBLIC_SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const EXPO_PUBLIC_SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://your-project-id.supabase.co';
+const EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your-supabase-anon-key';
 const EXPO_PUBLIC_SPRING_API_BASE_URL = process.env.EXPO_PUBLIC_SPRING_API_BASE_URL || 'http://localhost:8080/api/v1';
 const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT || 'development';
 
 // Validate required environment variables
 if (!EXPO_PUBLIC_SUPABASE_URL) {
-  throw new Error('EXPO_PUBLIC_SUPABASE_URL is required in .env file');
+  console.warn('EXPO_PUBLIC_SUPABASE_URL not found, using placeholder values');
 }
 if (!EXPO_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is required in .env file');
+  console.warn('EXPO_PUBLIC_SUPABASE_ANON_KEY not found, using placeholder values');
 }
 if (!EXPO_PUBLIC_SPRING_API_BASE_URL) {
-  throw new Error('EXPO_PUBLIC_SPRING_API_BASE_URL is required in .env file');
+  console.warn('EXPO_PUBLIC_SPRING_API_BASE_URL not found, using default values');
 }
 if (!EXPO_PUBLIC_ENVIRONMENT) {
-  throw new Error('EXPO_PUBLIC_ENVIRONMENT is required in .env file');
+  console.warn('EXPO_PUBLIC_ENVIRONMENT not found, using development');
 }
 
 // API Configuration

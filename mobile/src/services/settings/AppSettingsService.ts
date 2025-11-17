@@ -1,4 +1,4 @@
-import { AppSettings, AppSettingsRequest, AppSettingsUpdate } from '../..types/AppSettings';
+import { AppSettings, AppSettingsRequest, AppSettingsUpdate } from '../../types/AppSettings';
 import { API_CONFIG } from '../../config/api';
 
 const API_BASE_URL = API_CONFIG.SPRING_API_BASE_URL;

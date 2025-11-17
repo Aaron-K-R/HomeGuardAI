@@ -1,64 +1,15 @@
 {
-  "_comment": "============================================================================",
-  "_comment2": "HomeGuard AI Mobile Application - Package Configuration (package.json)",
-  "_comment3": "============================================================================",
-  "_comment4": "",
-  "_comment5": "This package.json file configures the HomeGuard AI mobile application",
-  "_comment6": "built with React Native and Expo. It defines dependencies, scripts,",
-  "_comment7": "and project metadata for the cross-platform security monitoring app.",
-  "_comment8": "",
-  "_comment9": "Project Overview:",
-  "_comment10": "- React Native 0.81.4 with Expo SDK 54",
-  "_comment11": "- TypeScript for type-safe development",
-  "_comment12": "- Cross-platform support (iOS, Android, Web)",
-  "_comment13": "- Security monitoring and camera integration",
-  "_comment14": "- Real-time notifications and alerts",
-  "_comment15": "",
-  "_comment16": "Key Features:",
-  "_comment17": "- Bottom tab navigation for easy access",
-  "_comment18": "- Camera integration for live security feeds",
-  "_comment19": "- Location services for geofencing",
-  "_comment20": "- Push notifications for security alerts",
-  "_comment21": "- Gesture handling for touch interactions",
-  "_comment22": "",
-  "_comment23": "Scripts:",
-  "_comment24": "- start: Start Expo development server",
-  "_comment25": "- android: Run on Android device/emulator",
-  "_comment26": "- ios: Run on iOS device/simulator",
-  "_comment27": "- web: Run in web browser",
-  "_comment28": "",
-  "_comment29": "Dependencies:",
-  "_comment30": "- React Native: Cross-platform mobile framework",
-  "_comment31": "- Expo: Development platform and build tools",
-  "_comment32": "- Navigation: React Navigation for screen management",
-  "_comment33": "- Icons: Expo Vector Icons for UI elements",
-  "_comment34": "- Camera: Expo Camera for security monitoring",
-  "_comment35": "- Location: Expo Location for geofencing",
-  "_comment36": "- Notifications: Expo Notifications for alerts",
-  "_comment37": "",
-  "_comment38": "Development:",
-  "_comment39": "- TypeScript: Type-safe JavaScript development",
-  "_comment40": "- React Types: TypeScript definitions for React",
-  "_comment41": "- Private: Prevents accidental npm publishing",
-  "_comment42": "============================================================================",
-  
   "name": "homeguard-ai-mobile",
   "version": "1.0.0",
   "description": "HomeGuard AI Security System Mobile Application",
   "main": "index.ts",
-  
   "scripts": {
-    "_comment": "Development and build scripts for the mobile application",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
-  
   "dependencies": {
-    "_comment": "Production dependencies required for the mobile application",
-    
-    "_comment_icons": "Expo Vector Icons: Comprehensive icon library for UI elements",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.7",
@@ -66,25 +17,18 @@
     "@react-navigation/stack": "^7.4.8",
     "@supabase/supabase-js": "^2.58.0",
     "expo": "~54.0.10",
-    
-    "_comment_camera": "Expo Camera: Camera integration for security monitoring",
     "expo-camera": "^17.0.8",
     "expo-image-picker": "^17.0.8",
     "expo-location": "^19.0.7",
-    
-    "_comment_notifications": "Expo Notifications: Push notifications for security alerts",
     "expo-notifications": "^0.32.11",
-    
-    "_comment_status_bar": "Expo Status Bar: Status bar styling and management",
     "expo-status-bar": "~3.0.8",
     "nativewind": "^4.2.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    
-    "_comment_react_native": "React Native: Cross-platform mobile development framework",
     "react-native": "0.81.4",
     "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "^2.28.0",
+    "react-native-qrcode-svg": "^6.3.15",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "^4.16.0",
@@ -93,27 +37,17 @@
     "react-native-worklets-core": "^1.6.2",
     "tailwindcss": "^3.4.17"
   },
-  
   "devDependencies": {
-    "_comment": "Development dependencies for TypeScript and build tools",
-    
-    "_comment_types": "React Types: TypeScript definitions for React",
     "@types/react": "~19.1.0",
     "@types/react-native": "^0.72.8",
     "babel-preset-expo": "~54.0.0",
     "prettier-plugin-tailwindcss": "^0.6.14",
     "typescript": "~5.9.2"
   },
-  
-  "_comment_private": "Prevents accidental publishing to npm registry",
   "private": true,
-  
-  "_comment_engines": "Node.js version requirements",
   "engines": {
     "node": ">=18.0.0"
   },
-  
-  "_comment_keywords": "Keywords for package discovery",
   "keywords": [
     "react-native",
     "expo",
@@ -123,10 +57,6 @@
     "notifications",
     "typescript"
   ],
-  
-  "_comment_author": "Project author information",
   "author": "HomeGuard AI Team",
-  
-  "_comment_license": "Project license",
   "license": "MIT"
 }

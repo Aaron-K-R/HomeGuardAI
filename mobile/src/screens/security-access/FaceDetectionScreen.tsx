@@ -154,7 +154,7 @@ const FaceDetectionScreen: React.FC<FaceDetectionScreenProps> = ({ navigation, r
 
     try {
       // First create the person
-      const { personService } = await import('../services/PersonService');
+      const { personService } = await import('../../services/people-management/PersonService');
       const newPerson = await personService.createPerson({
         name: newProfileName.trim(),
         personType: 'FAMILY_MEMBER',

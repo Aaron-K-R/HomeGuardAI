@@ -47,10 +47,10 @@ import lombok.Setter;
 public class SecuritySettings extends BaseEntity {
 
     /**
-     * One-to-One relationship with User entity
-     * Each user has exactly one security settings configuration
-     * Uses LAZY loading for performance (user loaded only when accessed)
-     * user_id foreign key is stored in the security_settings table
+     * One-to-One relationship with Home entity
+     * Each home has exactly one security settings configuration
+     * Uses LAZY loading for performance (home loaded only when accessed)
+     * home_id foreign key is stored in the security_settings table
      * @NotNull ensures the relationship is always established
      */
     @OneToOne(fetch = FetchType.LAZY)
