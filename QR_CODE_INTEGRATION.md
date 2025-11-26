@@ -34,10 +34,10 @@ homeguard:home_id:user_id:timestamp
 
 ## Features
 
-- ✅ 24-hour expiration
-- ✅ Home-specific access
-- ✅ Camera scanning
-- ✅ Self-contained (no backend required)
+- 24-hour expiration
+- Home-specific access
+- Camera scanning
+- Self-contained (no backend required)
 
 ## Files
 

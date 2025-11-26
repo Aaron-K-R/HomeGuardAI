@@ -96,4 +96,12 @@ public class DeviceController {
         List<Device> devices = deviceService.getDevicesByCapability(homeId, capability);
         return ResponseEntity.ok(devices);
     }
+    
+    @PostMapping("/{deviceId}/control")
+    public ResponseEntity<com.homeguard.homeguard_api.dto.DeviceControlResponseDto> controlDevice(
+            @PathVariable String deviceId,
+            @RequestBody com.homeguard.homeguard_api.dto.DeviceControlRequestDto request) {
+        com.homeguard.homeguard_api.dto.DeviceControlResponseDto response = deviceService.controlDevice(deviceId, request);
+        return ResponseEntity.ok(response);
+    }
 }
